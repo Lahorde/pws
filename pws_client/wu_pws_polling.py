@@ -126,8 +126,8 @@ class App():
 				pressure_trend = parsed_json_pws['current_observation']['pressure_trend'] # l'evolution pression atmosphérique
 				feelslike_c = parsed_json_pws['current_observation']['feelslike_c'] # la température ressentie
 				visibility = parsed_json_pws['current_observation']['visibility_km'] # la visibilité en km
-				precip_last_hr = parsed_json_pws['current_observation']['precip_1hr_in'] # cumul précipitations sur la dernière heure
-				precip_day = parsed_json_pws['current_observation']['precip_today_in'] # cumul précipitations sur 24h
+				precip_last_hr = parsed_json_pws['current_observation']['precip_1hr_metric'] # cumul précipitations sur la dernière heure
+				precip_day = parsed_json_pws['current_observation']['precip_today_metric'] # cumul précipitations sur 24h
 				UV = parsed_json_pws['current_observation']['UV'] # l'indice UV
             except Exception as e:
                 print "Impossible de parser les observations de la pws - %s" % e
