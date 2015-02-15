@@ -29,3 +29,6 @@ http://letchap.github.io/2013/07/08/afficher-la-meteo-avec-conky-et-python-1ere-
 Here is result in xfce :
 
 ![alt text](https://github.com/Lahorde/pws/raw/master/snapshot/pws_conky.jpg)
+
+Icon glossary :
+http://www.wunderground.com/weather/api/d/docs?d=resources/phrase-glossary

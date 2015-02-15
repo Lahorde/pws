@@ -118,6 +118,7 @@ class App():
 				last_observation = parsed_json_pws['current_observation']['observation_time_rfc822'] # l'heure dernière observation
 				current_temp = parsed_json_pws['current_observation']['temp_c'] # la température en °C
 				current_weather = parsed_json_pws['current_observation']['weather'] # le temps actuel
+				current_weather_icon = parsed_json_pws['current_observation']['icon'] # icone du temps actuel
 				humidity = parsed_json_pws['current_observation']['relative_humidity'] # le taux d'humidité en %
 				wind_kph = parsed_json_pws['current_observation']['wind_kph'] # la vitesse du vent
 				wind_dir = parsed_json_pws['current_observation']['wind_dir'] # l'orientation du vent
@@ -166,6 +167,7 @@ class App():
 
             with open(POLLED_DATA_PATH, 'w') as f: 
                 f.write("Meteo = " + current_weather.encode('utf8') + "\n")
+                f.write("Icone_temps = " + current_weather_icon + "\n")
                 f.write("Ville = " + city.encode('utf8') + "\n")
                 f.write("Derniere_observation = " + last_observation.encode('utf8') + "\n")
                 f.write("Temperature = " + str(current_temp) + " °C\n")

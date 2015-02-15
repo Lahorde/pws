@@ -38,7 +38,7 @@ override_utf8_locale yes
 ##############################################
 TEXT
 ####### Affichage day 1 ######
-${execp project_path=$PWS_CLIENT_PROJECT_PATH && grep jour1_icone /tmp/wu_polling.data | awk -v icon_path=$project_path/icons/ -F " " '{print "${image "  icon_path "colorful/png/" $3 ".png -p 0,15 -s 130x130}"}'}
+${execp project_path=$PWS_CLIENT_PROJECT_PATH && grep Icone_temps /tmp/wu_polling.data | awk -v icon_path=$project_path/icons/ -F " " '{print "${image "  icon_path "colorful/png/" $3 ".png -p 0,15 -s 130x130}"}'}
 
 ####### Affichage observations du jour de la PWS ######
 $color ${voffset -30}${goto 150}${font source sans pro :size=14:bold}${execp grep "^Derniere_observation " /tmp/wu_polling.data | awk -F " " '{print substr($7,0,length($7)-3)}'} à ${execp grep Ville /tmp/wu_polling.data | awk -F " " '{print $3}'}${font}
