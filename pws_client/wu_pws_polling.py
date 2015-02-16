@@ -160,6 +160,18 @@ class App():
             else:
                 pressure_trend = 'stable'
             
+            #prendre icone avec lune ou soleil selon ephemeride - pas de préfixe fourni dans nom des icones par WU
+            user = ephem.Observer()
+            user.lat = latitude
+            user.lon = longitude
+            user.elevation = float(elevation)
+            next_sunrise_datetime = user.next_rising(ephem.Sun()).datetime()
+            next_sunset_datetime = user.next_setting(ephem.Sun()).datetime()
+	
+            # La nuit la date du prochain coucher de Soleil est plus loin que celle du prochain lever de soleil
+            if next_sunset_datetime > next_sunrise_datetime:
+                current_weather_icon += "_night"
+            
             # J'écris ces informations dans un fichier qui servira plus tard pour le conky meteo.
             # En ouvrant le fichier en mode 'w', j'écrase le fichier meteo.txt précédent 
             # Je transforme tous les chiffres en chaînes de caractères et j'encode tous les textes français en UTF8    
@@ -189,20 +201,6 @@ class App():
                 f.write("Indice_UV = " + str(UV) + "\n")
                 f.write("Maison_salon_temp = " + App.emoncmsFeedval(EMONCMS_TEMP_FIELD) + "\n")
                 f.write("Maison_salon_hum = " + App.emoncmsFeedval(EMONCMS_HUMIDITY_FIELD) + "\n")             
-            
-            #prendre icone avec lune ou soleil selon ephemeride
-            user = ephem.Observer()
-            user.lat = latitude
-            user.lon = longitude
-            user.elevation = float(elevation)
-            next_sunrise_datetime = user.next_rising(ephem.Sun()).datetime()
-            next_sunset_datetime = user.next_setting(ephem.Sun()).datetime()
-	
-            icone_suffix = ""
-    
-            #le jour est levé, la date du prochain coucher de soleil est plus proche que celle du prochain lever
-            if next_sunset_datetime > next_sunrise_datetime:
-                icone_suffix += "_night"
             
             # Je récupère les prévisions sous le tag "simpleforecast", en bouclant sur chacune des périodes
             forecast = parsed_json_forecast['forecast']['simpleforecast']['forecastday']
@@ -234,24 +232,7 @@ class App():
                 elif period == 4:
                     date = 'jour4'
                 
-                # Encore un petit test pour les icones. Je combine icon et skyicon pour avoir la représentation graphique 
-                # la plus proche de la réalité en particulier "partiellement couvert et pluvieux" qui n'existe pas
-                # D'abord je définis 3 listes pour l'orage, la pluie et la neige
-                orage = ['tstorms','chancetstorms','nt_tstorms', 'nt_chancetstorms']
-                pluie = ['rain','chancerain','nt_rain', 'nt_chancerain', ]
-                neige = ['snow','flurries','chancesnow','chanceflurries','nt_snow','nt_flurries','nt_chancesnow','nt_chanceflurries','sleet', 'nt_sleet','chancesleet','nt_chancesleet']
-                # puis je définis mes icones
-                if icon in orage:
-                    icone = skyicon+"storm"
-                elif icon in pluie:
-                    icone = skyicon+"rain"
-                elif icon in neige:
-                    icone = skyicon+"snow"
-                else:
-                    icone = icon
-                    
-                # Ajout suffixe pour icone de nuit
-                icone += icone_suffix
+                icon = App.addWeatherIconSuffix(icon, skyicon)
                 
                 # J'écris à la suite, grâce à l'option 'a' append au lieu de 'w'
                 with open(POLLED_DATA_PATH, 'a') as f:
@@ -262,7 +243,7 @@ class App():
                             f.write(date + "_tempmax = "  + str(tempmax) + " °C\n")     
                             f.write(date + "_tempmin = "  + str(tempmin) + " °C\n")                              
                             f.write(date + "_conditions = " + condition.encode('utf8') + "\n")
-                            f.write(date + "_icone = " + icone + "\n")
+                            f.write(date + "_icone = " + icon + "\n")
                             f.write(date + "_pop = "  + str(pop) + "%\n")            
                             f.write(date + "_hauteur_precip = "  + str(hauteur_precip) + " mm\n")            
                             f.write(date + "_hauteur_neige = "  + str(hauteur_neige) + " cm\n")            
@@ -286,6 +267,25 @@ class App():
         except Exception, detail:
                 print "Error ", detail  
                 return NA_FIELD
+                
+    @staticmethod
+    def addWeatherIconSuffix(icon, skyicon):
+        # Encore un petit test pour les icones. Je combine icon et skyicon pour avoir la représentation graphique 
+        # la plus proche de la réalité en particulier "partiellement couvert et pluvieux" qui n'existe pas
+        # D'abord je définis 3 listes pour l'orage, la pluie et la neige
+        orage = ['tstorms','chancetstorms','nt_tstorms', 'nt_chancetstorms']
+        pluie = ['rain','chancerain','nt_rain', 'nt_chancerain', ]
+        neige = ['snow','flurries','chancesnow','chanceflurries','nt_snow','nt_flurries','nt_chancesnow','nt_chanceflurries','sleet', 'nt_sleet','chancesleet','nt_chancesleet']
+        # puis je définis mes icones
+        if icon in orage:
+            icone = skyicon+"storm"
+        elif icon in pluie:
+            icone = skyicon+"rain"
+        elif icon in neige:
+            icone = skyicon+"snow"
+        else:
+            icone = icon
+        return icone
 
 # Toujours commencer la lecture d'un programme python par la fin. C'est là qu'on lance le démon
 app = App()
