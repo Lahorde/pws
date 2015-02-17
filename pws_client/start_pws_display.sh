@@ -13,8 +13,13 @@ do
 done
 echo connection up
 
-echo start wu polling script
-python2 $PWS_CLIENT_PROJECT_PATH/wu_pws_polling.py start
+if python2 $PWS_CLIENT_PROJECT_PATH/wu_pws_polling.py start
+then
+    echo  wu polling script started
+else
+    echo Error $? when launching python2 $PWS_CLIENT_PROJECT_PATH/wu_pws_polling.py start - exiting
+    exit 1
+fi
 
 #for reactivity at startup
 counter=0
@@ -47,3 +52,5 @@ done
 sleep 2
 echo launch conky display
 conky -d -c $PWS_CLIENT_PROJECT_PATH/conky/conkyrc_pws_obs
+
+exit 0

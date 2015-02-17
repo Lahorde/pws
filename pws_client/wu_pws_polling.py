@@ -19,8 +19,6 @@ import sys, traceback
 # import pour le démon
 import time
 from daemon import runner
-# import pour l'éphemeride
-import ephem
 
 try:
     API_KEY = os.environ["WU_KEY"]
@@ -55,7 +53,7 @@ class App():
     def run(self):    
         # champ non dispo
         NA_FIELD = "--"
-     
+        
         while True: # C'est le début de ma boucle pour démoniser mon programme
         
             ###############################################
@@ -107,28 +105,34 @@ class App():
                 sys.exit(2) # pour sortir du programme si la requête n'aboutit pas
 
             try:
-				# Je récupère les informations du jour stokées sur le tag "current_observation"
-				# Je fais attention à avoir des variables uniques dans le cas où je fais une recherche sur une chaîne de
-				# caractère plus tard (avec un grep par exemple).
+                # Je récupère les informations du jour stokées sur le tag "current_observation"
+                # Je fais attention à avoir des variables uniques dans le cas où je fais une recherche sur une chaîne de
+                # caractère plus tard (avec un grep par exemple).
 
-				city = parsed_json_pws['current_observation']['display_location']['city'] # la ville
-				latitude = parsed_json_pws['current_observation']['display_location']['latitude'] # latitude
-				longitude = parsed_json_pws['current_observation']['display_location']['longitude'] # longitude
-				elevation = parsed_json_pws['current_observation']['display_location']['elevation'] # altitude
-				last_observation = parsed_json_pws['current_observation']['observation_time_rfc822'] # l'heure dernière observation
-				current_temp = parsed_json_pws['current_observation']['temp_c'] # la température en °C
-				current_weather = parsed_json_pws['current_observation']['weather'] # le temps actuel
-				current_weather_icon = parsed_json_pws['current_observation']['icon'] # icone du temps actuel
-				humidity = parsed_json_pws['current_observation']['relative_humidity'] # le taux d'humidité en %
-				wind_kph = parsed_json_pws['current_observation']['wind_kph'] # la vitesse du vent
-				wind_dir = parsed_json_pws['current_observation']['wind_dir'] # l'orientation du vent
-				pressure_mb = parsed_json_pws['current_observation']['pressure_mb'] # la pression atmosphérique
-				pressure_trend = parsed_json_pws['current_observation']['pressure_trend'] # l'evolution pression atmosphérique
-				feelslike_c = parsed_json_pws['current_observation']['feelslike_c'] # la température ressentie
-				visibility = parsed_json_pws['current_observation']['visibility_km'] # la visibilité en km
-				precip_last_hr = parsed_json_pws['current_observation']['precip_1hr_metric'] # cumul précipitations sur la dernière heure
-				precip_day = parsed_json_pws['current_observation']['precip_today_metric'] # cumul précipitations sur 24h
-				UV = parsed_json_pws['current_observation']['UV'] # l'indice UV
+                city = parsed_json_pws['current_observation']['display_location']['city'] # la ville
+                latitude = parsed_json_pws['current_observation']['display_location']['latitude'] # latitude
+                longitude = parsed_json_pws['current_observation']['display_location']['longitude'] # longitude
+                elevation = parsed_json_pws['current_observation']['display_location']['elevation'] # altitude
+                last_observation = parsed_json_pws['current_observation']['observation_time_rfc822'] # l'heure dernière observation
+                current_temp = parsed_json_pws['current_observation']['temp_c'] # la température en °C
+                current_weather = parsed_json_pws['current_observation']['weather'] # le temps actuel
+                #Indication nuit non fournie dans champ "icone". En revanche dans "icon_url" on a cette indication
+                # ex : "icon_url":"http://icons.wxug.com/i/c/k/cloudy.gif"
+                # c'est le préfixe "nt_" qui indique le type d'icone à prendre (nuit ou jour)
+                # Dans les infos de la pws pas de champ supplémentaire "skyicon" pour fournir des infos supplémentaires 
+                # afin de choisir une icone plus précise pour le temps actuel - par contre ce champ skyicon est présent pour le forecast
+                icon_url_parsed = parsed_json_pws['current_observation']['icon_url'].split('/')
+                current_weather_icon = icon_url_parsed[len(icon_url_parsed) - 1].split('.')[0]
+                humidity = parsed_json_pws['current_observation']['relative_humidity'] # le taux d'humidité en %
+                wind_kph = parsed_json_pws['current_observation']['wind_kph'] # la vitesse du vent
+                wind_dir = parsed_json_pws['current_observation']['wind_dir'] # l'orientation du vent
+                pressure_mb = parsed_json_pws['current_observation']['pressure_mb'] # la pression atmosphérique
+                pressure_trend = parsed_json_pws['current_observation']['pressure_trend'] # l'evolution pression atmosphérique
+                feelslike_c = parsed_json_pws['current_observation']['feelslike_c'] # la température ressentie
+                visibility = parsed_json_pws['current_observation']['visibility_km'] # la visibilité en km
+                precip_last_hr = parsed_json_pws['current_observation']['precip_1hr_metric'] # cumul précipitations sur la dernière heure
+                precip_day = parsed_json_pws['current_observation']['precip_today_metric'] # cumul précipitations sur 24h
+                UV = parsed_json_pws['current_observation']['UV'] # l'indice UV
             except Exception as e:
                 print "Impossible de parser les observations de la pws - %s" % e
                 sys.exit(2) 
@@ -159,18 +163,6 @@ class App():
                 pressure_trend = 'en hausse'
             else:
                 pressure_trend = 'stable'
-            
-            #prendre icone avec lune ou soleil selon ephemeride - pas de préfixe fourni dans nom des icones par WU
-            user = ephem.Observer()
-            user.lat = latitude
-            user.lon = longitude
-            user.elevation = float(elevation)
-            next_sunrise_datetime = user.next_rising(ephem.Sun()).datetime()
-            next_sunset_datetime = user.next_setting(ephem.Sun()).datetime()
-	
-            # La nuit la date du prochain coucher de Soleil est plus loin que celle du prochain lever de soleil
-            if next_sunset_datetime > next_sunrise_datetime:
-                current_weather_icon += "_night"
             
             # J'écris ces informations dans un fichier qui servira plus tard pour le conky meteo.
             # En ouvrant le fichier en mode 'w', j'écrase le fichier meteo.txt précédent 
