@@ -19,12 +19,16 @@ import sys, traceback
 # import pour le démon
 import time
 from daemon import runner
+import lockfile
+
+import logging
 
 try:
     API_KEY = os.environ["WU_KEY"]
+    LOGGER_FILE = os.environ["PWS_LOG_PATH"]
     PWS_ID = os.environ["WU_PWS_ID"]
     # emplacement du fichier où sont écrites les informations extraites depuis weather underground
-    POLLED_DATA_PATH = "/tmp/wu_polling.data"
+    POLLED_DATA_PATH = os.environ["PWS_POLLING_DATA_PATH"]
     #station vent
     VENT_1_URL_SUFFIX = os.environ["VENT_1_URL_SUFFIX"]
     VENT_2_URL_SUFFIX = os.environ["VENT_2_URL_SUFFIX"]
@@ -35,6 +39,15 @@ try:
 except KeyError as e:
     print "Avant de lancer le script - renseigner la configuration dans ../pws_params.sh - parametre manquant : %s" %e
     sys.exit(2)
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+fh = logging.FileHandler(LOGGER_FILE)
+# create formatter and add it to the handlers
+formatter = logging.Formatter('%(asctime)s - ' + os.path.basename(__file__) + ' - %(levelname)s - %(message)s')
+fh.setFormatter(formatter)
+logger.addHandler(fh)
+logger.info("starting wu_pws_polling script")
 
 #=========================================================== 
 #       La classe
@@ -50,11 +63,14 @@ class App():
         self.pidfile_timeout = 5  
     
     # Bien appelé la fonction 'run' pour le démon
-    def run(self):    
+    def run(self):
+        logger.info("starting wu_pws_polling loop")
+
         # champ non dispo
         NA_FIELD = "--"
         
         while True: # C'est le début de ma boucle pour démoniser mon programme
+            logger.info( "Polling weather data...")
         
             ###############################################
             #           Le corps du programme             #
@@ -101,7 +117,7 @@ class App():
                 page_json_wind_2.close() 
             
             except Exception as e: 
-                print "Les informations meto ne sont pas accessibles sur le site wunderground.com - %s" % e
+                logger.error( "Les informations meto ne sont pas accessibles sur le site wunderground.com %s", e )
                 sys.exit(2) # pour sortir du programme si la requête n'aboutit pas
 
             try:
@@ -134,7 +150,7 @@ class App():
                 precip_day = parsed_json_pws['current_observation']['precip_today_metric'] # cumul précipitations sur 24h
                 UV = parsed_json_pws['current_observation']['UV'] # l'indice UV
             except Exception as e:
-                print "Impossible de parser les observations de la pws - %s" % e
+                logger.error( "Impossible de parser les observations de la pws %s", e)
                 sys.exit(2) 
 
             wind_1_last_obs, wind_kph_1, wind_dir_1, wind_2_last_obs, wind_kph_2, wind_dir_2 = NA_FIELD, NA_FIELD, NA_FIELD, NA_FIELD, NA_FIELD, NA_FIELD
@@ -149,7 +165,7 @@ class App():
                 wind_kph_2 = parsed_json_wind_2['current_observation']['wind_kph'] # la vitesse du vent
                 wind_dir_2 = parsed_json_wind_2['current_observation']['wind_dir'] # l'orientation du vent
             except KeyError as e:  
-                print "Erreur sur les observations de vent - pas de clé pour %s" % e
+                logger.error( "Erreur sur les observations de vent - pas de clé pour %s", e )
             
             # Un petit test sur l'indice UV qui peut être négatif
             if str(UV) == '-1':
@@ -257,7 +273,7 @@ class App():
                 sock.close
                 return data_str[1:-1]
         except Exception, detail:
-                print "Error ", detail  
+                logger.error( "Error when getting emoncms field %s", feedid)
                 return NA_FIELD
                 
     @staticmethod
@@ -282,5 +298,10 @@ class App():
 # Toujours commencer la lecture d'un programme python par la fin. C'est là qu'on lance le démon
 app = App()
 daemon_runner = runner.DaemonRunner(app)
-daemon_runner.do_action()
+#Preserve log file descriptor in daemon context
+daemon_runner.daemon_context.files_preserve=[fh.stream]
+try :
+    daemon_runner.do_action()
+except lockfile.LockTimeout:
+    logger.error( "Unable to lock %s", app.pidfile_path )
 #app.run()
