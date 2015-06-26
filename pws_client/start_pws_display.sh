@@ -7,23 +7,31 @@ function logFn {
     echo `date +'%F %R %S'` - `basename $0` - $1
 }
 
+function startPollingScript {
+    # Wait for connection to be ready
+    while ! ping -c 1 google.fr > /dev/null 2>&1
+    do
+        logFn "no connection up"
+        sleep 2
+    done
+    logFn "connection up"
+
+    script_launch_cmd="python2 $PWS_CLIENT_PROJECT_PATH/wu_pws_polling.py start"
+    eval $script_launch_cmd
+    
+    if [ $? -eq 0 ]
+    then
+        poll_script_pid=$(pidof $script_launch_cmd )
+        logFn "wu polling script started - pid = $poll_script_pid"
+    else
+        logFn "Error $? when launching python2 $PWS_CLIENT_PROJECT_PATH/wu_pws_polling.py start - exiting"
+        exit 1
+    fi
+}
+
 logFn "start pws display"
 
-# Wait for connection to be ready
-while ! ping -c 1 google.fr > /dev/null 2>&1
-do
-    logFn "no connection up"
-    sleep 2
-done
-logFn "connection up"
-
-if python2 $PWS_CLIENT_PROJECT_PATH/wu_pws_polling.py start 
-then
-    logFn "wu polling script started"
-else
-    logFn "Error $? when launching python2 $PWS_CLIENT_PROJECT_PATH/wu_pws_polling.py start - exiting"
-    exit 1
-fi
+startPollingScript
 
 #for reactivity at startup
 counter=0
@@ -63,5 +71,16 @@ else
     logFn "Unable to display PWS widget - Error $?"
     exit 1
 fi
+
+while true ; do
+    if kill -0 $poll_script_pid ; then
+        sleep 5
+    else
+        logFn "polling script exited - try to restart it"
+        startPollingScript
+    fi
+done
+    
+    
 
 exit 0
