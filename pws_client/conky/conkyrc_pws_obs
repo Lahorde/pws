@@ -1,74 +1,79 @@
-﻿##############################################
-# Paramètres
-##############################################
-background yes
-use_xft yes
-xftfont source sans pro:size=9
-uppercase no # set to yes if you want all text to be in uppercase
-xftalpha 1
-update_interval 120
-total_run_times 0
-own_window yes
-own_window_class Conky
-own_window_type Desktop 
-own_window_hints undecorated,below,sticky,skip_taskbar,skip_pager  
-own_window_transparent yes
-double_buffer yes
-minimum_size 420 150
-maximum_width 420
-draw_shades no
-draw_outline no
-draw_borders no
-draw_graph_borders no
-alignment top_right
-default_color 100c1c
-# max temp color 
-color1 E75C5C
-#min temp color
-color2 FF9E46
-gap_x 10
-gap_y 60
-border_inner_margin 5 ## marge entre le texte et la bordure
-border_outer_margin 5 ## marge entre la bordure et le bord de la fenêtre.
-no_buffers yes
-uppercase no
-override_utf8_locale yes
-##############################################
-# Affichage
-##############################################
-TEXT
-####### Affichage day 1 ######
-${execp project_path=$PWS_CLIENT_PROJECT_PATH && grep Icone_temps /tmp/wu_polling.data | awk -v icon_path=$project_path/icons/ -F " " '{print "${image "  icon_path "colorful/png/" $3 ".png -p 0,15 -s 130x130}"}'}
+------------------
+--  Paramètres  --
+------------------
+conky.config = {
+    background = true,
+    use_xft = true,
+    font = 'Source Sans Pro:size=9',
+    uppercase = false,
+    xftalpha = 1,
+    update_interval = 1,
+    total_run_times = 0,
+    own_window = true,
+    own_window_class = 'conky',
+    own_window_type = 'desktop',
+    own_window_hints = 'undecorated,below,sticky,skip_taskbar,skip_pager',
+    own_window_transparent = true,
+    double_buffer = true,
+    minimum_height = 150,
+    minimum_width = 420,
+    maximum_width = 420,
+    draw_shades = false,
+    draw_outline = false,
+    draw_borders = false,
+    draw_graph_borders = false,
+    alignment = top_left,
+    default_color = '100c1c',
+    ---- max temp color ----
+    color1 = 'FB8C00',
+    ----in temp color ----
+    color2 = 'E6E3E1',
+    gap_x = 10,
+    gap_y = 250,
+    border_inner_margin = 5, ---- marge entre le texte et la bordure ----
+    border_outer_margin = 5, ---- marge entre la bordure et le bord de la fenêtre. ----
+    no_buffers = true,
+    uppercase = false,
+    override_utf8_locale = true
+}
+---------------------
+-- Affichage
+---------------------
 
-####### Affichage observations du jour de la PWS ######
-$color ${voffset -30}${goto 150}${font source sans pro :size=14:bold}${execp grep "^Derniere_observation " /tmp/wu_polling.data | awk -F " " '{print substr($7,0,length($7)-3)}'} à ${execp grep Ville /tmp/wu_polling.data | awk -F " " '{print $3}'}${font}
-${voffset 10}${goto 150}Temp. actuelle : ${font source sans pro :size=9:bold}$alignr${execp grep Temperature /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}${font}
-${voffset 1}${goto 150}Temp. ressentie : ${font source sans pro :size=9:bold}$alignr${execp grep Ressentie /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}${font}
-${voffset 1}${goto 150}Proba. de précip. : ${font source sans pro :size=9:bold}$alignr${execp grep jour1_pop /tmp/wu_polling.data | awk -F " " '{print $3}'}${font}
-${voffset 1}${goto 150}Pression atmos. : ${font source sans pro :size=9:bold}$alignr${execp grep Pression /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}${execp grep Tend_pres /tmp/wu_polling.data | awk -F " " '{print " " $3}'}${font}
-${voffset 1}${goto 150}Humidité : ${font source sans pro :size=9:bold}$alignr${execp grep Humidite /tmp/wu_polling.data | awk -F " " '{print $3}'}
-${voffset 12}${font droid sans :size=10.5:bold}${goto 40}${execp grep Meteo /tmp/wu_polling.data | awk -F " " '{print $3 " " $4 " " $5}'}${font}${goto 150}${voffset -10}Hauteur de précipitation (1h) :  ${font source sans pro :size=9:bold}$alignr${execp grep Precip_1h /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'} mm 
-${voffset 10}${font source sans pro :size=12:bold}${goto 40}${color1}${execp grep jour1_tempmax /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'} | ${color}${font}${execp grep jour1_tempmin /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}${goto 150}${voffset -10}Hauteur de précipitation (1j) : ${font source sans pro :size=9:bold}$alignr${execp grep Precip_1j /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'} mm
-${goto 0}${color #393835}${hr 1}
-####### Affichage prévision J + 1 ######
-${execp project_path=$PWS_CLIENT_PROJECT_PATH && grep jour2_icone /tmp/wu_polling.data | awk -v icon_path=$project_path/icons/ -F " " '{print "${image "  icon_path "colorful/png/" $3 ".png -p 15,175 -s 40x40}"}'}
-${voffset 24}${font source sans pro :size=9}${goto 20}${color1}${execp grep jour2_tempmax /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'} | ${color}${execp grep jour2_tempmin /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}
-${goto 30}${color}${execp grep jour2_hauteur_precip /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}
-####### Affichage prévision J + 2 ######
-${execp project_path=$PWS_CLIENT_PROJECT_PATH && grep jour3_icone /tmp/wu_polling.data | awk -v icon_path=$project_path/icons/ -F " " '{print "${image "  icon_path "colorful/png/" $3 ".png -p 75,175 -s 40x40}"}'}
-${voffset -48}${goto 85}${color1}${execp grep jour3_tempmax /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'} | ${color}${execp grep jour3_tempmin /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}
-${goto 93}${color}${execp grep jour3_hauteur_precip /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}
-####### Affichage prévision J + 3 ######
-${execp project_path=$PWS_CLIENT_PROJECT_PATH && grep jour4_icone /tmp/wu_polling.data | awk -v icon_path=$project_path/icons/ -F " " '{print "${image "  icon_path "colorful/png/" $3 ".png -p 135,175 -s 40x40}"}'}
-${voffset -48}${goto 145}${color1}${execp grep jour4_tempmax /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'} | ${color}${execp grep jour4_tempmin /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}
-${goto 154}${color}${execp grep jour4_hauteur_precip /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}
-####### Point vent ######
-${execp echo "\${image $PWS_CLIENT_PROJECT_PATH/icons/wind_4.png -p 180,177 -s 50x50}"}
-${goto 240}${voffset -80}Casa${goto 295}(${execp grep "^Derniere_observation " /tmp/wu_polling.data | awk -F " " '{print substr($7,0,length($7)-3)}'})${goto 340}${font source sans pro :size=9:bold}${execp grep 'Dir_vent ' /tmp/wu_polling.data | awk -F " " '{print $3 "  "}'}$alignr${execp grep 'Vent ' /tmp/wu_polling.data | awk -F " " '{print $3 " " $4 " "}'}${font}
-${goto 240}Aéroport${goto 295}(${execp grep Vent_1_Derniere_observation /tmp/wu_polling.data | awk -F " " '{print substr($7,0,length($7)-3)}'})${goto 340}${font source sans pro :size=9:bold}${execp grep 'Dir_vent_1 ' /tmp/wu_polling.data | awk -F " " '{print $3 "  "}'}$alignr${execp grep 'Vent_1 ' /tmp/wu_polling.data | awk -F " " '{print $3 " " $4 " "}'}${font}
-${goto 240}Aix${goto 295}(${execp grep Vent_2_Derniere_observation /tmp/wu_polling.data | awk -F " " '{print substr($7,0,length($7)-3)}'})${goto 340}${font source sans pro :size=9:bold}${execp grep 'Dir_vent_2 ' /tmp/wu_polling.data | awk -F " " '{print $3 "  "}'}$alignr${execp grep 'Vent_2 ' /tmp/wu_polling.data | awk -F " " '{print $3 " " $4 " "}'}${font}
-${voffset 10}${goto 0}${color #393835}${hr 1}
-####### Info maison ######
-${execp echo "\${image $PWS_CLIENT_PROJECT_PATH/icons/house_2.png -p 35,250 -s 80x80}"}
-${color}${goto 150}température salon${goto 295}${font source sans pro :size=9:bold}$alignr${execp grep Maison_salon_temp /tmp/wu_polling.data | awk -F " " '{print $3}'} °C${font}
-${goto 150}humidité salon${goto 295}${font source sans pro :size=9:bold}$alignr${execp grep Maison_salon_hum /tmp/wu_polling.data | awk -F " " '{print $3}'} %
+conky.text = [[
+    #### Affichage day 1 ####
+    ${execp project_path=$PWS_CLIENT_PROJECT_PATH && grep Icone_temps /tmp/wu_polling.data | awk -v icon_path=$project_path/icons/ -F " " '{print "${image "  icon_path "colorful/png/" $3 ".png -p 0,18 -s 130x130}"}'}
+
+    #### Affichage observations du jour de la PWS ####
+    $color ${voffset -30}${goto 150}${font source sans pro :size=14:bold}${execp grep "^Derniere_observation " /tmp/wu_polling.data | awk -F " " '{print substr($7,0,length($7)-3)}'} à ${execp grep Ville /tmp/wu_polling.data | awk -F " " '{print $3}'}${font}
+    ${voffset 10}${goto 150}Temp. actuelle : ${font source sans pro :size=9:bold}$alignr${execp grep Temperature /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}${font}
+    ${voffset 1}${goto 150}Temp. ressentie : ${font source sans pro :size=9:bold}$alignr${execp grep Ressentie /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}${font}
+    ${voffset 1}${goto 150}Proba. de précip. : ${font source sans pro :size=9:bold}$alignr${execp grep jour1_pop /tmp/wu_polling.data | awk -F " " '{print $3}'}${font}
+    ${voffset 1}${goto 150}Pression atmos. : ${font source sans pro :size=9:bold}$alignr${execp grep Pression /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}${execp grep Tend_pres /tmp/wu_polling.data | awk -F " " '{print " " $3}'}${font}
+    ${voffset 1}${goto 150}Humidité : ${font source sans pro :size=9:bold}$alignr${execp grep Humidite /tmp/wu_polling.data | awk -F " " '{print $3}'}
+    ${voffset 12}${font}${goto 150}${voffset -10}Hauteur de précipitation (1h) :  ${font source sans pro :size=9:bold}$alignr${execp grep Precip_1h /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'} mm 
+    ${voffset 10}${font source sans pro :size=12:bold}${goto 40}${color1}${execp grep jour1_tempmax /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'} | ${color}${font}${execp grep jour1_tempmin /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}${goto 150}${voffset -10}Hauteur de précipitation (1j) : ${font source sans pro :size=9:bold}$alignr${execp grep Precip_1j /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'} mm
+    ${goto 0}${color #393835}${hr 1}
+    #### Affichage prévision J + 1 ####
+    ${execp project_path=$PWS_CLIENT_PROJECT_PATH && grep jour2_icone /tmp/wu_polling.data | awk -v icon_path=$project_path/icons/ -F " " '{print "${image "  icon_path "colorful/png/" $3 ".png -p 15,175 -s 40x40}"}'}
+    ${voffset 24}${font source sans pro :size=9}${goto 20}${color1}${execp grep jour2_tempmax /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'} | ${color}${execp grep jour2_tempmin /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}
+    ${goto 30}${color}${execp grep jour2_hauteur_precip /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}
+    #### Affichage prévision J + 2 ####
+    ${execp project_path=$PWS_CLIENT_PROJECT_PATH && grep jour3_icone /tmp/wu_polling.data | awk -v icon_path=$project_path/icons/ -F " " '{print "${image "  icon_path "colorful/png/" $3 ".png -p 75,175 -s 40x40}"}'}
+    ${voffset -48}${goto 85}${color1}${execp grep jour3_tempmax /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'} | ${color}${execp grep jour3_tempmin /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}
+    ${goto 93}${color}${execp grep jour3_hauteur_precip /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}
+    #### Affichage prévision J + 3 ####
+    ${execp project_path=$PWS_CLIENT_PROJECT_PATH && grep jour4_icone /tmp/wu_polling.data | awk -v icon_path=$project_path/icons/ -F " " '{print "${image "  icon_path "colorful/png/" $3 ".png -p 135,175 -s 40x40}"}'}
+    ${voffset -48}${goto 145}${color1}${execp grep jour4_tempmax /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'} | ${color}${execp grep jour4_tempmin /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}
+    ${goto 154}${color}${execp grep jour4_hauteur_precip /tmp/wu_polling.data | awk -F " " '{print $3 " " $4}'}
+    #### Point vent ####
+    ${execp echo "\${image $PWS_CLIENT_PROJECT_PATH/icons/wind_4.png -p 180,177 -s 50x50}"}
+    ${goto 240}${voffset -80}Casa${goto 295}(${execp grep "^Derniere_observation " /tmp/wu_polling.data | awk -F " " '{print substr($7,0,length($7)-3)}'})${goto 340}${font source sans pro :size=9:bold}${execp grep 'Dir_vent ' /tmp/wu_polling.data | awk -F " " '{print $3 "  "}'}$alignr${execp grep 'Vent ' /tmp/wu_polling.data | awk -F " " '{print $3 " " $4 " "}'}${font}
+    ${goto 240}Aéroport${goto 295}(${execp grep Vent_1_Derniere_observation /tmp/wu_polling.data | awk -F " " '{print substr($7,0,length($7)-3)}'})${goto 340}${font source sans pro :size=9:bold}${execp grep 'Dir_vent_1 ' /tmp/wu_polling.data | awk -F " " '{print $3 "  "}'}$alignr${execp grep 'Vent_1 ' /tmp/wu_polling.data | awk -F " " '{print $3 " " $4 " "}'}${font}
+    ${goto 240}Aix${goto 295}(${execp grep Vent_2_Derniere_observation /tmp/wu_polling.data | awk -F " " '{print substr($7,0,length($7)-3)}'})${goto 340}${font source sans pro :size=9:bold}${execp grep 'Dir_vent_2 ' /tmp/wu_polling.data | awk -F " " '{print $3 "  "}'}$alignr${execp grep 'Vent_2 ' /tmp/wu_polling.data | awk -F " " '{print $3 " " $4 " "}'}${font}
+    ${voffset 10}${goto 0}${color #393835}${hr 1}
+    #### Info maison ####
+    ${execp echo "\${image $PWS_CLIENT_PROJECT_PATH/icons/house_2.png -p 35,250 -s 80x80}"}
+    ${color}${goto 150}température salon${goto 295}${font source sans pro :size=9:bold}$alignr${execp grep Maison_salon_temp /tmp/wu_polling.data | awk -F " " '{print $3}'} °C${font}
+    ${goto 150}humidité salon${goto 295}${font source sans pro :size=9:bold}$alignr${execp grep Maison_salon_hum /tmp/wu_polling.data | awk -F " " '{print $3}'} %
+]]
