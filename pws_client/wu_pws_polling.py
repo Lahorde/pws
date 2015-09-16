@@ -32,6 +32,8 @@ try:
     #station vent
     VENT_1_URL_SUFFIX = os.environ["VENT_1_URL_SUFFIX"]
     VENT_2_URL_SUFFIX = os.environ["VENT_2_URL_SUFFIX"]
+    VENT_PIOU_PIOU_URL_PREFIX = os.environ["VENT_PIOU_PIOU_URL_PREFIX"]
+    VENT_1_PIOU_PIOU_URL_SUFFIX = os.environ["VENT_1_PIOU_PIOU_URL_SUFFIX"]
     #data emoncms
     EMONCMS_KEY = os.environ["EMONCMS_KEY"]
     EMONCMS_HUMIDITY_FIELD=os.environ["EMONCMS_HUMIDITY_FIELD"]
@@ -57,8 +59,8 @@ class App():
     # Tout ça, c'est pour le démon
     def __init__(self):
         self.stdin_path = '/dev/null'
-        self.stdout_path = '/dev/null' # J'ai remplacé /dev/tty par dev/null pour éviter les plantages au démarrage par init.d
-        self.stderr_path = '/dev/null' # J'ai remplacé /dev/tty par dev/null pour éviter les plantages au démarrage par init.d
+        self.stdout_path = '/dev/tty'
+        self.stderr_path = '/dev/tty'
         self.pidfile_path = '/tmp/meteo.pid'
         self.pidfile_timeout = 5  
     
@@ -115,9 +117,17 @@ class App():
                 parsed_json_wind_2 = json.loads(json_string)
                 # Et je peux fermer ma page meteo, je n'en ai plus besoin
                 page_json_wind_2.close() 
+                
+                page_json_wind_3 = urllib2.urlopen(VENT_PIOU_PIOU_URL_PREFIX + VENT_1_PIOU_PIOU_URL_SUFFIX)
+                # Je lis la page
+                json_string = page_json_wind_3.read()
+                # Je mets cette page dans un parseur
+                parsed_json_wind_3 = json.loads(json_string)
+                # Et je peux fermer ma page meteo, je n'en ai plus besoin
+                page_json_wind_3.close() 
             
             except Exception as e: 
-                logger.error( "Les informations meto ne sont pas accessibles sur le site wunderground.com %s", e )
+                logger.error( "Les informations meto ne sont pas accessibles %s", e )
                 sys.exit(2) # pour sortir du programme si la requête n'aboutit pas
 
             try:
@@ -149,6 +159,7 @@ class App():
                 precip_last_hr = parsed_json_pws['current_observation']['precip_1hr_metric'] # cumul précipitations sur la dernière heure
                 precip_day = parsed_json_pws['current_observation']['precip_today_metric'] # cumul précipitations sur 24h
                 UV = parsed_json_pws['current_observation']['UV'] # l'indice UV
+                
             except Exception as e:
                 logger.error( "Impossible de parser les observations de la pws %s", e)
                 sys.exit(2) 
@@ -157,6 +168,8 @@ class App():
             
             #wind_1_last_obs = parsed_json_wind_1['current_observation']['observation_time_rfc822'] # l'heure dernière observation
             try:
+            
+            
 				# vent
                 wind_1_last_obs = parsed_json_wind_1['current_observation']['observation_time_rfc822'] # l'heure dernière observation
                 wind_kph_1 = parsed_json_wind_1['current_observation']['wind_kph'] # la vitesse du vent
@@ -166,6 +179,16 @@ class App():
                 wind_dir_2 = parsed_json_wind_2['current_observation']['wind_dir'] # l'orientation du vent
             except KeyError as e:  
                 logger.error( "Erreur sur les observations de vent - pas de clé pour %s", e )
+                
+            try:
+                #piou piou
+                wind_3_last_obs = parsed_json_wind_3['data']['measurements']['date'] # l'heure dernière observation
+                wind_kph_3 = parsed_json_wind_3['data']['measurements']['wind_speed_avg'] # la vitesse du vent
+                wind_dir_3 = parsed_json_wind_3['data']['measurements']['wind_heading']# l'orientation du vent
+            
+            except Exception as e:
+                logger.error( "Impossible de parser les observations de pioupiou", e)
+                sys.exit(2) 
             
             # Un petit test sur l'indice UV qui peut être négatif
             if str(UV) == '-1':
@@ -203,6 +226,9 @@ class App():
                 f.write("Vent_2_Derniere_observation = " + wind_2_last_obs.encode('utf8') + "\n")
                 f.write("Vent_2 = " + str(wind_kph_2) + " km/h\n")
                 f.write("Dir_vent_2 = " + str(wind_dir_2) + "\n")
+                f.write("Vent_3_Derniere_observation = " + wind_3_last_obs.encode('utf8') + "\n")
+                f.write("Vent_3 = " + str(wind_kph_3) + " km/h\n")
+                f.write("Dir_vent_3 = " + str(wind_dir_3) + "\n")
                 f.write("Pression = " + str(pressure_mb) + " mb\n")
                 f.write("Tend_pres = " + pressure_trend.encode('utf8') + "\n") #Ok, l'utf8 ne sert à rien là
                 f.write("Visibilite = " + str(visibility) + " km\n")
@@ -294,6 +320,7 @@ class App():
         else:
             icone = icon
         return icone
+
 
 # Toujours commencer la lecture d'un programme python par la fin. C'est là qu'on lance le démon
 app = App()
