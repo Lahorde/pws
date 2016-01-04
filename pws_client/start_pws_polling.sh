@@ -21,7 +21,7 @@ function startPollingScript {
     
     if [ $? -eq 0 ]
     then
-        poll_script_pid=$(pidof $script_launch_cmd )
+        poll_script_pid=$(pgrep -f "$script_launch_cmd" )
         logFn "wu polling script started - pid = $poll_script_pid"
     else
         logFn "Error $? when launching python2 $PWS_CLIENT_PROJECT_PATH/wu_pws_polling.py start - exiting"
@@ -60,17 +60,6 @@ do
     fi
 done
 
-#wait here to have conky over background
-sleep 2
-logFn "launch conky display"
-
-if conky -d -c $PWS_CLIENT_PROJECT_PATH/conky/conkyrc_pws_obs
-then
-    logFn "PWS widget successfully displayed"
-else
-    logFn "Unable to display PWS widget - Error $?"
-    exit 1
-fi
 
 while true ; do
     if kill -0 $poll_script_pid ; then

@@ -31,7 +31,6 @@ try:
     POLLED_DATA_PATH = os.environ["PWS_POLLING_DATA_PATH"]
     #station vent
     VENT_1_URL_SUFFIX = os.environ["VENT_1_URL_SUFFIX"]
-    VENT_2_URL_SUFFIX = os.environ["VENT_2_URL_SUFFIX"]
     VENT_PIOU_PIOU_URL_PREFIX = os.environ["VENT_PIOU_PIOU_URL_PREFIX"]
     VENT_1_PIOU_PIOU_URL_SUFFIX = os.environ["VENT_1_PIOU_PIOU_URL_SUFFIX"]
     #data emoncms
@@ -110,14 +109,6 @@ class App():
                 # Et je peux fermer ma page meteo, je n'en ai plus besoin
                 page_json_wind_1.close()
                 
-                page_json_wind_2 = urllib2.urlopen('http://api.wunderground.com/api/' + API_KEY + VENT_2_URL_SUFFIX)
-                # Je lis la page
-                json_string = page_json_wind_2.read()
-                # Je mets cette page dans un parseur
-                parsed_json_wind_2 = json.loads(json_string)
-                # Et je peux fermer ma page meteo, je n'en ai plus besoin
-                page_json_wind_2.close() 
-                
                 page_json_wind_3 = urllib2.urlopen(VENT_PIOU_PIOU_URL_PREFIX + VENT_1_PIOU_PIOU_URL_SUFFIX)
                 # Je lis la page
                 json_string = page_json_wind_3.read()
@@ -174,10 +165,7 @@ class App():
                 wind_1_last_obs = parsed_json_wind_1['current_observation']['observation_time_rfc822'] # l'heure dernière observation
                 wind_kph_1 = parsed_json_wind_1['current_observation']['wind_kph'] # la vitesse du vent
                 wind_dir_1 = parsed_json_wind_1['current_observation']['wind_dir'] # l'orientation du vent
-                wind_2_last_obs = parsed_json_wind_2['current_observation']['observation_time_rfc822'] # l'heure dernière observation
-                wind_kph_2 = parsed_json_wind_2['current_observation']['wind_kph'] # la vitesse du vent
-                wind_dir_2 = parsed_json_wind_2['current_observation']['wind_dir'] # l'orientation du vent
-            except KeyError as e:  
+           except KeyError as e:  
                 logger.error( "Erreur sur les observations de vent - pas de clé pour %s", e )
                 
             try:
