@@ -20,7 +20,7 @@ import sys, traceback
 import time
 from daemon import runner
 import lockfile
-
+from dateutil.parser import parse
 import logging
 
 try:
@@ -58,8 +58,8 @@ class App():
     # Tout ça, c'est pour le démon
     def __init__(self):
         self.stdin_path = '/dev/null'
-        self.stdout_path = '/dev/tty'
-        self.stderr_path = '/dev/tty'
+        self.stdout_path = '/dev/null'
+        self.stderr_path = LOGGER_FILE
         self.pidfile_path = '/tmp/meteo.pid'
         self.pidfile_timeout = 5  
     
@@ -80,9 +80,11 @@ class App():
             # Je récupère les informations fournies par wunderground grâce à leur api, au format json,
             # en une seule fois (forecast et conditions), et en français
             # Un exemple de code est fourni sur le site wunderground
-        
+                parsed_json_pws, parsed_json_forecast, parsed_json_wind_1, parsed_json_wind_2 = None, None, None, None
+                
                 # Je charge ma page des observations pws
-                page_json_pws = urllib2.urlopen('http://api.wunderground.com/api/' + API_KEY + '/conditions/lang:FR/q/pws:' + PWS_ID + '.json')
+                last_url = 'http://api.wunderground.com/api/' + API_KEY + '/conditions/lang:FR/q/pws:' + PWS_ID + '.json'
+                page_json_pws = urllib2.urlopen(last_url)
                 # Je lis la page
                 json_string = page_json_pws.read()
                 # Je mets cette page dans un parseur
@@ -92,8 +94,9 @@ class App():
 		
                 pws_city = parsed_json_pws['current_observation']['display_location']['city'] # la ville où se situe la pws
 		
+                last_url = 'http://api.wunderground.com/api/' + API_KEY + '/forecast/conditions/lang:FR/q/France/' + pws_city + '.json'
                 # Je charge ma page des prévisions pws
-                page_json_forecast = urllib2.urlopen('http://api.wunderground.com/api/' + API_KEY + '/forecast/conditions/lang:FR/q/France/' + pws_city + '.json')
+                page_json_forecast = urllib2.urlopen(last_url)
                 # Je lis la page
                 json_string = page_json_forecast.read()
                 # Je mets cette page dans un parseur
@@ -101,7 +104,12 @@ class App():
                 # Et je peux fermer ma page meteo, je n'en ai plus besoin
                 page_json_forecast.close()
                 
-                page_json_wind_1 = urllib2.urlopen('http://api.wunderground.com/api/' + API_KEY + VENT_1_URL_SUFFIX)
+            except Exception as e: 
+                logger.error( "Les informations depuis %s meto ne sont pas accessibles %s", last_url, e )
+                sys.exit(2) # pour sortir du programme si la requête n'aboutit pas
+                
+                last_url = 'http://api.wunderground.com/api/' + API_KEY + VENT_1_URL_SUFFIX
+                page_json_wind_1 = urllib2.urlopen(last_url)
                 # Je lis la page
                 json_string = page_json_wind_1.read()
                 # Je mets cette page dans un parseur
@@ -109,17 +117,18 @@ class App():
                 # Et je peux fermer ma page meteo, je n'en ai plus besoin
                 page_json_wind_1.close()
                 
-                page_json_wind_3 = urllib2.urlopen(VENT_PIOU_PIOU_URL_PREFIX + VENT_1_PIOU_PIOU_URL_SUFFIX)
+                last_url = VENT_PIOU_PIOU_URL_PREFIX + VENT_1_PIOU_PIOU_URL_SUFFIX
+                page_json_wind_2 = urllib2.urlopen(last_url)
                 # Je lis la page
-                json_string = page_json_wind_3.read()
+                json_string = page_json_wind_2.read()
                 # Je mets cette page dans un parseur
-                parsed_json_wind_3 = json.loads(json_string)
+                parsed_json_wind_2 = json.loads(json_string)
                 # Et je peux fermer ma page meteo, je n'en ai plus besoin
-                page_json_wind_3.close() 
-            
+                page_json_wind_2.close() 
+                        
             except Exception as e: 
-                logger.error( "Les informations meto ne sont pas accessibles %s", e )
-                sys.exit(2) # pour sortir du programme si la requête n'aboutit pas
+                logger.error( "Les informations depuis %s meto ne sont pas accessibles %s", last_url, e )
+                # pas de exit si les prev de vents ne sont pas dispos
 
             try:
                 # Je récupère les informations du jour stokées sur le tag "current_observation"
@@ -131,6 +140,8 @@ class App():
                 longitude = parsed_json_pws['current_observation']['display_location']['longitude'] # longitude
                 elevation = parsed_json_pws['current_observation']['display_location']['elevation'] # altitude
                 last_observation = parsed_json_pws['current_observation']['observation_time_rfc822'] # l'heure dernière observation
+                last_observation = parse(last_observation)
+                last_observation = last_observation.strftime('%d/%m/%Y-%H:%M')
                 current_temp = parsed_json_pws['current_observation']['temp_c'] # la température en °C
                 current_weather = parsed_json_pws['current_observation']['weather'] # le temps actuel
                 #Indication nuit non fournie dans champ "icone". En revanche dans "icon_url" on a cette indication
@@ -155,28 +166,30 @@ class App():
                 logger.error( "Impossible de parser les observations de la pws %s", e)
                 sys.exit(2) 
 
-            wind_1_last_obs, wind_kph_1, wind_dir_1, wind_2_last_obs, wind_kph_2, wind_dir_2 = NA_FIELD, NA_FIELD, NA_FIELD, NA_FIELD, NA_FIELD, NA_FIELD
-            
-            #wind_1_last_obs = parsed_json_wind_1['current_observation']['observation_time_rfc822'] # l'heure dernière observation
-            try:
-            
-            
 				# vent
-                wind_1_last_obs = parsed_json_wind_1['current_observation']['observation_time_rfc822'] # l'heure dernière observation
-                wind_kph_1 = parsed_json_wind_1['current_observation']['wind_kph'] # la vitesse du vent
-                wind_dir_1 = parsed_json_wind_1['current_observation']['wind_dir'] # l'orientation du vent
-           except KeyError as e:  
+            wind_1_last_obs, wind_kph_1, wind_dir_1, wind_2_last_obs, wind_kph_2, wind_dir_2 = NA_FIELD, NA_FIELD, NA_FIELD, NA_FIELD, NA_FIELD, NA_FIELD            
+            try:
+                if parsed_json_wind_1 != None :
+                  wind_1_last_obs = parsed_json_wind_1['current_observation']['observation_time_rfc822'] # l'heure dernière observation
+                  wind_1_last_obs = parse(wind_1_last_obs)
+                  wind_1_last_obs = wind_1_last_obs.strftime('%d/%m/%Y-%H:%M')
+                  wind_kph_1 = parsed_json_wind_1['current_observation']['wind_kph'] # la vitesse du vent
+                  wind_dir_1 = parsed_json_wind_1['current_observation']['wind_dir'] # l'orientation du vent
+
+            except KeyError as e:  
                 logger.error( "Erreur sur les observations de vent - pas de clé pour %s", e )
                 
             try:
-                #piou piou
-                wind_3_last_obs = parsed_json_wind_3['data']['measurements']['date'] # l'heure dernière observation
-                wind_kph_3 = parsed_json_wind_3['data']['measurements']['wind_speed_avg'] # la vitesse du vent
-                wind_dir_3 = parsed_json_wind_3['data']['measurements']['wind_heading']# l'orientation du vent
-            
+                if parsed_json_wind_1 != None :
+                  #piou piou
+                  wind_2_last_obs = parsed_json_wind_2['data']['measurements']['date'] # l'heure dernière observation
+                  wind_2_last_obs = parse(wind_2_last_obs)
+                  wind_2_last_obs = wind_2_last_obs.strftime('%d/%m/%Y-%H:%M')
+                  wind_kph_2 = parsed_json_wind_2['data']['measurements']['wind_speed_avg'] # la vitesse du vent
+                  wind_dir_2 = parsed_json_wind_2['data']['measurements']['wind_heading']# l'orientation du vent
+              
             except Exception as e:
                 logger.error( "Impossible de parser les observations de pioupiou", e)
-                sys.exit(2) 
             
             # Un petit test sur l'indice UV qui peut être négatif
             if str(UV) == '-1':
@@ -214,9 +227,6 @@ class App():
                 f.write("Vent_2_Derniere_observation = " + wind_2_last_obs.encode('utf8') + "\n")
                 f.write("Vent_2 = " + str(wind_kph_2) + " km/h\n")
                 f.write("Dir_vent_2 = " + str(wind_dir_2) + "\n")
-                f.write("Vent_3_Derniere_observation = " + wind_3_last_obs.encode('utf8') + "\n")
-                f.write("Vent_3 = " + str(wind_kph_3) + " km/h\n")
-                f.write("Dir_vent_3 = " + str(wind_dir_3) + "\n")
                 f.write("Pression = " + str(pressure_mb) + " mb\n")
                 f.write("Tend_pres = " + pressure_trend.encode('utf8') + "\n") #Ok, l'utf8 ne sert à rien là
                 f.write("Visibilite = " + str(visibility) + " km\n")
@@ -275,7 +285,7 @@ class App():
             ############################################
             #             Le fin du programme          #
             ############################################  
-            time.sleep(600) # C'est la fin de ma boucle de démonisation. La temporisation est de 120 secondes  
+            time.sleep(240) # C'est la fin de ma boucle de démonisation. La temporisation est de 120 secondes  
         
     @staticmethod
     def emoncmsFeedval(feedid):

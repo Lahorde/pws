@@ -33,34 +33,6 @@ logFn "start pws display"
 
 startPollingScript
 
-#for reactivity at startup
-counter=0
-while ! find $PWS_POLLING_DATA_PATH > /dev/null 2>&1 
-do
-    logFn "wu polling data not created"
-    if [ $counter -gt 10 ]
-    then
-        sleep 10
-    else
-        sleep 2
-        (( counter++ ))
-    fi
-done
-
-counter=0
-while [ $(expr $(date +%s) - $(date +%s -r $PWS_POLLING_DATA_PATH)) -gt 300 ]
-do
-    logFn "$PWS_POLLING_DATA_PATH not updated"
-    if [ $counter -gt 10 ]
-    then
-        sleep 10
-    else
-        sleep 2
-        (( counter++ ))
-    fi
-done
-
-
 while true ; do
     if kill -0 $poll_script_pid ; then
         sleep 5

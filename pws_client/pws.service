@@ -1,12 +1,12 @@
 [Unit]
-Description=Start PWS widget
+Description=PWS polling
 Wants=graphical.target
 After=graphical.target
 
 [Service]
 Type=simple
 RemainAfterExit=no
-ExecStart=/usr/bin/sh -c "PWS_PROJECT_DIR/pws_client/start_pws_display.sh > /tmp/pws.log"
+ExecStart=/usr/bin/sh -c "PWS_PROJECT_DIR/pws_client/start_pws_polling.sh > /tmp/pws.log"
 
 [Install]
 WantedBy=graphical.target
