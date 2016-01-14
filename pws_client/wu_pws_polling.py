@@ -108,6 +108,7 @@ class App():
                 logger.error( "Les informations depuis %s meto ne sont pas accessibles %s", last_url, e )
                 sys.exit(2) # pour sortir du programme si la requête n'aboutit pas
                 
+            try :
                 last_url = 'http://api.wunderground.com/api/' + API_KEY + VENT_1_URL_SUFFIX
                 page_json_wind_1 = urllib2.urlopen(last_url)
                 # Je lis la page
@@ -178,9 +179,9 @@ class App():
 
             except KeyError as e:  
                 logger.error( "Erreur sur les observations de vent - pas de clé pour %s", e )
-                
+            
             try:
-                if parsed_json_wind_1 != None :
+                if parsed_json_wind_2 != None :
                   #piou piou
                   wind_2_last_obs = parsed_json_wind_2['data']['measurements']['date'] # l'heure dernière observation
                   wind_2_last_obs = parse(wind_2_last_obs)
@@ -285,7 +286,8 @@ class App():
             ############################################
             #             Le fin du programme          #
             ############################################  
-            time.sleep(240) # C'est la fin de ma boucle de démonisation. La temporisation est de 120 secondes  
+            #SUR WU 10 call/minute ou 500 call /jour max lorsque l'utilisateur a une clé développeur
+            time.sleep(600) # C'est la fin de ma boucle de démonisation. La temporisation est de 120 secondes  
         
     @staticmethod
     def emoncmsFeedval(feedid):
@@ -310,11 +312,11 @@ class App():
         neige = ['snow','flurries','chancesnow','chanceflurries','nt_snow','nt_flurries','nt_chancesnow','nt_chanceflurries','sleet', 'nt_sleet','chancesleet','nt_chancesleet']
         # puis je définis mes icones
         if icon in orage:
-            icone = skyicon+"storm"
+            icone = skyicon+icon
         elif icon in pluie:
-            icone = skyicon+"rain"
+            icone = skyicon+icon
         elif icon in neige:
-            icone = skyicon+"snow"
+            icone = skyicon+icon
         else:
             icone = icon
         return icone
