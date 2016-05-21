@@ -4,7 +4,13 @@ source $PWS_CLIENT_PROJECT_PATH/../pws_params.sh
 
 #for reactivity at startup
 counter=0
-while ! find $PWS_POLLING_DATA_PATH > /dev/null 2>&1 
+if [ -z "$PWS_POLLING_DATA_PATH" ]
+then 
+  echo "PWS_POLLING_DATA_PATH not defined in $PWS_CLIENT_PROJECT_PATH/../pws_params.sh"
+  exit 1
+fi
+
+while ! find $PWS_POLLING_DATA_PATH > /dev/null 2>&1
 do
     echo "wu polling data not created"
     if [ $counter -gt 10 ]
