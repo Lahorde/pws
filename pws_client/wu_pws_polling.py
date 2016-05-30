@@ -5,7 +5,7 @@
 # - les données d'une PWS (personal weather station) 
 # depuis weather underground
 # - les données de l'habitation (température intérieure
-# humidité... depuis emoncms
+# humidité... depuis influxdb
 # wu_pws_polling.py
 #----------------------------------------------------
 """ récupère les informations météo grace à l'API du site wunderground.com """ 
@@ -22,6 +22,9 @@ from daemon import runner
 import lockfile
 from dateutil.parser import parse
 import logging
+from influxdb import client as influxdb
+
+NA_FIELD = "--"
 
 try:
     API_KEY = os.environ["WU_KEY"]
@@ -33,10 +36,16 @@ try:
     VENT_1_URL_SUFFIX = os.environ["VENT_1_URL_SUFFIX"]
     VENT_PIOU_PIOU_URL_PREFIX = os.environ["VENT_PIOU_PIOU_URL_PREFIX"]
     VENT_1_PIOU_PIOU_URL_SUFFIX = os.environ["VENT_1_PIOU_PIOU_URL_SUFFIX"]
-    #data emoncms
-    EMONCMS_KEY = os.environ["EMONCMS_KEY"]
-    EMONCMS_HUMIDITY_FIELD=os.environ["EMONCMS_HUMIDITY_FIELD"]
-    EMONCMS_TEMP_FIELD=os.environ["EMONCMS_TEMP_FIELD"]
+    #data influxdb
+    INFLUX_DB_HOST_URL = os.environ["INFLUX_DB_HOST_URL"]
+    INFLUX_DB_HOST_PORT = os.environ["INFLUX_DB_HOST_PORT"]
+    INFLUX_DB_USER = os.environ["INFLUX_DB_USER"]
+    INFLUX_DB_PASS = os.environ["INFLUX_DB_PASS"]
+    INFLUXDB_SERIES_SUFFIX = os.environ["INFLUXDB_SERIES_SUFFIX"]
+    INFLUXDB_NAME = os.environ["INFLUXDB_NAME"]
+    INFLUX_HOME_TEMP_FIELD = os.environ["INFLUXDB_HOME_TEMP_FIELD"]
+    INFLUXDB_HOME_HUMIDITY_FIELD = os.environ["INFLUXDB_HOME_HUMIDITY_FIELD"]
+    
 except KeyError as e:
     print "Avant de lancer le script - renseigner la configuration dans ../pws_params.sh - parametre manquant : %s" %e
     sys.exit(2)
@@ -61,14 +70,13 @@ class App():
         self.stdout_path = '/dev/null'
         self.stderr_path = LOGGER_FILE
         self.pidfile_path = '/tmp/meteo.pid'
-        self.pidfile_timeout = 5  
+        self.pidfile_timeout = 5
+        
+        self.db = influxdb.InfluxDBClient(INFLUX_DB_HOST_URL, INFLUX_DB_HOST_PORT, INFLUX_DB_USER, INFLUX_DB_PASS)
     
     # Bien appelé la fonction 'run' pour le démon
     def run(self):
         logger.info("starting wu_pws_polling loop")
-
-        # champ non dispo
-        NA_FIELD = "--"
         
         while True: # C'est le début de ma boucle pour démoniser mon programme
             logger.info( "Polling weather data...")
@@ -232,8 +240,8 @@ class App():
                 f.write("Tend_pres = " + pressure_trend.encode('utf8') + "\n") #Ok, l'utf8 ne sert à rien là
                 f.write("Visibilite = " + str(visibility) + " km\n")
                 f.write("Indice_UV = " + str(UV) + "\n")
-                f.write("Maison_salon_temp = " + App.emoncmsFeedval(EMONCMS_TEMP_FIELD) + "\n")
-                f.write("Maison_salon_hum = " + App.emoncmsFeedval(EMONCMS_HUMIDITY_FIELD) + "\n")             
+                f.write("Maison_salon_temp = " + self.influxDbGetLastPoint(INFLUX_HOME_TEMP_FIELD) + "\n")
+                f.write("Maison_salon_hum = " + self.influxDbGetLastPoint(INFLUXDB_HOME_HUMIDITY_FIELD) + "\n")             
             
             # Je récupère les prévisions sous le tag "simpleforecast", en bouclant sur chacune des périodes
             forecast = parsed_json_forecast['forecast']['simpleforecast']['forecastday']
@@ -289,18 +297,23 @@ class App():
             #SUR WU 10 call/minute ou 500 call /jour max lorsque l'utilisateur a une clé développeur
             time.sleep(600) # C'est la fin de ma boucle de démonisation. La temporisation est de 120 secondes  
         
-    @staticmethod
-    def emoncmsFeedval(feedid):
-        data_url="http://emoncms.org/feed/value.json?apikey=" + EMONCMS_KEY + "&id=" + str(feedid)
-        # read in the data from emoncms
+    def influxDbGetLastPoint(self, valueId):
+        # read in the data from influxdb
         try:
-                sock = urllib2.urlopen(data_url)
-                data_str = sock.read()
-                sock.close
-                return data_str[1:-1]
-        except Exception, detail:
-                logger.error( "Error when getting emoncms field %s", feedid)
+            # check db exists 
+            all_dbs_list = self.db.get_list_database()
+
+            if INFLUXDB_NAME not in [str(x['name']) for x in all_dbs_list]:
+                logger.error("{0} not in dd list".format(INFLUXDB_NAME))
                 return NA_FIELD
+            else :   
+                self.db.switch_database(INFLUXDB_NAME)
+
+            val = self.db.query('select last(value) from ' + valueId + INFLUXDB_SERIES_SUFFIX + ' where time>now() - 10m')
+            return str(round(list(val.get_points())[0]['last'], 2))
+        except Exception, detail:
+            logger.error( 'Error when getting influxdb point field %s - %s', valueId, detail)
+            return NA_FIELD
                 
     @staticmethod
     def addWeatherIconSuffix(icon, skyicon):
