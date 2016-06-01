@@ -21,6 +21,7 @@ import time
 from daemon import runner
 import lockfile
 from dateutil.parser import parse
+from dateutil import tz
 import logging
 from influxdb import client as influxdb
 
@@ -310,8 +311,13 @@ class App():
                 self.db.switch_database(INFLUXDB_NAME)
 
             val = self.db.query('select * from ' + valueId + INFLUXDB_SERIES_SUFFIX + ' where time>now() - 10m order by time desc limit 1')
-            date = parse(list(val.get_points())[0]['time'])            
-            return str(round(list(val.get_points())[0]['value'], 2)) + " " + date.strftime('%d/%m/%Y-%H:%M')
+            utcDate = parse(list(val.get_points())[0]['time'])            
+            
+            #convert UTC date to local date 
+            from_zone = tz.tzutc()
+            to_zone = tz.tzlocal()
+            localDate = utcDate.astimezone(to_zone)
+            return str(round(list(val.get_points())[0]['value'], 2)) + " " + localDate.strftime('%d/%m/%Y-%H:%M')
         except Exception, detail:
             logger.error( 'Error when getting influxdb point field %s - %s', valueId, detail)
             return NA_FIELD
