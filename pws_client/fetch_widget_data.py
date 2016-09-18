@@ -6,6 +6,7 @@
 # depuis weather underground
 # - les données de l'habitation (température intérieure
 # humidité... depuis influxdb
+# - les données de pollution pour votre ville
 # wu_pws_polling.py
 #----------------------------------------------------
 """ récupère les informations météo grace à l'API du site wunderground.com """ 
@@ -52,25 +53,27 @@ except KeyError as e:
     print("Avant de lancer le script - renseigner la configuration dans ../pws_params.sh - parametre manquant : %s" %e)
     sys.exit(2)
 
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-fh = logging.FileHandler(LOGGER_FILE)
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - ' + os.path.basename(__file__) + ' - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-logger.addHandler(fh)
-logger.info("starting wu_pws_polling script")
 
 #=========================================================== 
 #       La classe
 #===========================================================        
 
-class App(): 
-    # Tout ça, c'est pour le démon
+class LastObservations(): 
     def __init__(self):
         self.db = influxdb.InfluxDBClient(INFLUX_DB_HOST_URL, INFLUX_DB_HOST_PORT, INFLUX_DB_USER, INFLUX_DB_PASS)
     
-    # Bien appelé la fonction 'run' pour le démon
+    def getJSON(self, url):
+        try:
+            resp = urllib.request.urlopen(url)
+            resp_data = resp.read()
+            parsed_json = json.loads(resp_data.decode())
+            resp.close()
+            return parsed_json
+
+        except Exception as e :
+            logger.error( "Unable to get parsed json data from %s - %s", url, e )
+            sys.exit(2)
+
     def run(self):
         logger.info("starting wu_pws_polling loop")
         
@@ -80,60 +83,23 @@ class App():
             ###############################################
             #           Le corps du programme             #
             ###############################################
-            try:
             # Je récupère les informations fournies par wunderground grâce à leur api, au format json,
             # en une seule fois (forecast et conditions), et en français
             # Un exemple de code est fourni sur le site wunderground
-                parsed_json_pws, parsed_json_forecast, parsed_json_wind_1, parsed_json_wind_2 = None, None, None, None
-                
-                # Je charge ma page des observations pws
-                last_url = 'http://api.wunderground.com/api/' + API_KEY + '/conditions/lang:FR/q/pws:' + PWS_ID + '.json'
-                page_json_pws = urllib.request.urlopen(last_url)
-                # Je lis la page
-                json_string = page_json_pws.read()
-                # Je mets cette page dans un parseur
-                parsed_json_pws = json.loads(json_string.decode())
-                # Et je peux fermer ma page meteo, je n'en ai plus besoin
-                page_json_pws.close()
-		
+            parsed_json_pws, parsed_json_forecast, parsed_json_wind_1, parsed_json_wind_2 = None, None, None, None
+            
+            parsed_json_pws = self.getJSON('http://api.wunderground.com/api/' + API_KEY + '/conditions/lang:FR/q/pws:' + PWS_ID + '.json')
+            try:
                 pws_city = parsed_json_pws['current_observation']['display_location']['city'] # la ville où se situe la pws
-		
-                last_url = 'http://api.wunderground.com/api/' + API_KEY + '/forecast/conditions/lang:FR/q/France/' + pws_city + '.json'
-                # Je charge ma page des prévisions pws
-                page_json_forecast = urllib.request.urlopen(last_url)
-                # Je lis la page
-                json_string = page_json_forecast.read()
-                # Je mets cette page dans un parseur
-                parsed_json_forecast = json.loads(json_string.decode())
-                # Et je peux fermer ma page meteo, je n'en ai plus besoin
-                page_json_forecast.close()
                 
-            except Exception as e: 
-                logger.error( "Les informations depuis %s meto ne sont pas accessibles %s", last_url, e )
-                sys.exit(2) # pour sortir du programme si la requête n'aboutit pas
-                
-            try :
-                last_url = 'http://api.wunderground.com/api/' + API_KEY + VENT_1_URL_SUFFIX
-                page_json_wind_1 = urllib.request.urlopen(last_url)
-                # Je lis la page
-                json_string = page_json_wind_1.read()
-                # Je mets cette page dans un parseur
-                parsed_json_wind_1 = json.loads(json_string.decode())
-                # Et je peux fermer ma page meteo, je n'en ai plus besoin
-                page_json_wind_1.close()
-                
-                last_url = VENT_PIOU_PIOU_URL_PREFIX + VENT_1_PIOU_PIOU_URL_SUFFIX
-                page_json_wind_2 = urllib.request.urlopen(last_url)
-                # Je lis la page
-                json_string = page_json_wind_2.read()
-                # Je mets cette page dans un parseur
-                parsed_json_wind_2 = json.loads(json_string.decode())
-                # Et je peux fermer ma page meteo, je n'en ai plus besoin
-                page_json_wind_2.close() 
-                        
-            except Exception as e: 
-                logger.error( "Les informations depuis %s meto ne sont pas accessibles %s", last_url, e )
-                # pas de exit si les prev de vents ne sont pas dispos
+            except KeyError as e: 
+                logger.error( "Unable to parse PWS city from JSON content - %s",  e )
+                sys.exit(2) 
+            
+            parsed_json_forecast = self.getJSON('http://api.wunderground.com/api/' + API_KEY + '/forecast/conditions/lang:FR/q/France/' + pws_city + '.json')
+            # WIND    
+            page_json_wind_1 = self.getJSON('http://api.wunderground.com/api/' + API_KEY + VENT_1_URL_SUFFIX)
+            page_json_wind_2 = self.getJSON(VENT_PIOU_PIOU_URL_PREFIX + VENT_1_PIOU_PIOU_URL_SUFFIX)
 
             try:
                 # Je récupère les informations du jour stokées sur le tag "current_observation"
@@ -269,7 +235,7 @@ class App():
                 elif period == 4:
                     date = 'jour4'
                 
-                icon = App.addWeatherIconSuffix(icon, skyicon)
+                icon = LastObservations.addWeatherIconSuffix(icon, skyicon)
                 
                 # J'écris à la suite, grâce à l'option 'a' append au lieu de 'w'
                 with open(POLLED_DATA_PATH, 'a') as f:
@@ -337,9 +303,16 @@ class App():
         return icone
 
 if __name__ == '__main__':
-    print("prout")
-    # Toujours commencer la lecture d'un programme python par la fin. C'est là qu'on lance le démon
-    app = App()
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    fh = logging.FileHandler(LOGGER_FILE)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s - ' + os.path.basename(__file__) + ' - %(levelname)s - %(message)s')
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+    logger.info("starting wu_pws_polling script")
+    
+    lastObs = LastObservations()
     pidfile = lockfile.pidlockfile.PIDLockFile("/tmp/pws.pid")
     with daemon.DaemonContext(stdout=sys.stdout, stderr=sys.stderr, files_preserve = [fh.stream], pidfile=pidfile):
-        app.run()
+        lastObs.run()
