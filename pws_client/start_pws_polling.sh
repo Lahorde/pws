@@ -16,7 +16,7 @@ function startPollingScript {
     done
     logFn "connection up"
 
-    script_launch_cmd="python2 $PWS_CLIENT_PROJECT_PATH/wu_pws_polling.py start"
+    script_launch_cmd="python3 $PWS_CLIENT_PROJECT_PATH/fetch_widget_data.py"
     eval $script_launch_cmd
     
     if [ $? -eq 0 ]

@@ -13,13 +13,14 @@
 #import pour les infos meteo
 import os.path
 import os
-import urllib2
+import urllib
+import urllib.request
 import json
 import sys, traceback
 # import pour le démon
 import time
-from daemon import runner
-import lockfile
+import daemon
+import lockfile.pidlockfile 
 from dateutil.parser import parse
 from dateutil import tz
 import logging
@@ -48,7 +49,7 @@ try:
     INFLUXDB_HOME_HUMIDITY_FIELD = os.environ["INFLUXDB_HOME_HUMIDITY_FIELD"]
     
 except KeyError as e:
-    print "Avant de lancer le script - renseigner la configuration dans ../pws_params.sh - parametre manquant : %s" %e
+    print("Avant de lancer le script - renseigner la configuration dans ../pws_params.sh - parametre manquant : %s" %e)
     sys.exit(2)
 
 logger = logging.getLogger()
@@ -67,12 +68,6 @@ logger.info("starting wu_pws_polling script")
 class App(): 
     # Tout ça, c'est pour le démon
     def __init__(self):
-        self.stdin_path = '/dev/null'
-        self.stdout_path = '/dev/null'
-        self.stderr_path = LOGGER_FILE
-        self.pidfile_path = '/tmp/meteo.pid'
-        self.pidfile_timeout = 5
-        
         self.db = influxdb.InfluxDBClient(INFLUX_DB_HOST_URL, INFLUX_DB_HOST_PORT, INFLUX_DB_USER, INFLUX_DB_PASS)
     
     # Bien appelé la fonction 'run' pour le démon
@@ -93,11 +88,11 @@ class App():
                 
                 # Je charge ma page des observations pws
                 last_url = 'http://api.wunderground.com/api/' + API_KEY + '/conditions/lang:FR/q/pws:' + PWS_ID + '.json'
-                page_json_pws = urllib2.urlopen(last_url)
+                page_json_pws = urllib.request.urlopen(last_url)
                 # Je lis la page
                 json_string = page_json_pws.read()
                 # Je mets cette page dans un parseur
-                parsed_json_pws = json.loads(json_string)
+                parsed_json_pws = json.loads(json_string.decode())
                 # Et je peux fermer ma page meteo, je n'en ai plus besoin
                 page_json_pws.close()
 		
@@ -105,11 +100,11 @@ class App():
 		
                 last_url = 'http://api.wunderground.com/api/' + API_KEY + '/forecast/conditions/lang:FR/q/France/' + pws_city + '.json'
                 # Je charge ma page des prévisions pws
-                page_json_forecast = urllib2.urlopen(last_url)
+                page_json_forecast = urllib.request.urlopen(last_url)
                 # Je lis la page
                 json_string = page_json_forecast.read()
                 # Je mets cette page dans un parseur
-                parsed_json_forecast = json.loads(json_string)
+                parsed_json_forecast = json.loads(json_string.decode())
                 # Et je peux fermer ma page meteo, je n'en ai plus besoin
                 page_json_forecast.close()
                 
@@ -119,20 +114,20 @@ class App():
                 
             try :
                 last_url = 'http://api.wunderground.com/api/' + API_KEY + VENT_1_URL_SUFFIX
-                page_json_wind_1 = urllib2.urlopen(last_url)
+                page_json_wind_1 = urllib.request.urlopen(last_url)
                 # Je lis la page
                 json_string = page_json_wind_1.read()
                 # Je mets cette page dans un parseur
-                parsed_json_wind_1 = json.loads(json_string)
+                parsed_json_wind_1 = json.loads(json_string.decode())
                 # Et je peux fermer ma page meteo, je n'en ai plus besoin
                 page_json_wind_1.close()
                 
                 last_url = VENT_PIOU_PIOU_URL_PREFIX + VENT_1_PIOU_PIOU_URL_SUFFIX
-                page_json_wind_2 = urllib2.urlopen(last_url)
+                page_json_wind_2 = urllib.request.urlopen(last_url)
                 # Je lis la page
                 json_string = page_json_wind_2.read()
                 # Je mets cette page dans un parseur
-                parsed_json_wind_2 = json.loads(json_string)
+                parsed_json_wind_2 = json.loads(json_string.decode())
                 # Et je peux fermer ma page meteo, je n'en ai plus besoin
                 page_json_wind_2.close() 
                         
@@ -220,10 +215,10 @@ class App():
             # Je n'ai pas besoin de fermer le fichier en utilisant "with open"
 
             with open(POLLED_DATA_PATH, 'w') as f: 
-                f.write("Meteo = " + current_weather.encode('utf8') + "\n")
+                f.write("Meteo = " + current_weather + "\n")
                 f.write("Icone_temps = " + current_weather_icon + "\n")
-                f.write("Ville = " + city.encode('utf8') + "\n")
-                f.write("Derniere_observation = " + last_observation.encode('utf8') + "\n")
+                f.write("Ville = " + city + "\n")
+                f.write("Derniere_observation = " + last_observation + "\n")
                 f.write("Temperature = " + str(current_temp) + " °C\n")
                 f.write("Ressentie = " + str(feelslike_c) + " °C\n")
                 f.write("Humidite = " + humidity + "\n")
@@ -231,14 +226,14 @@ class App():
                 f.write("Precip_1j = " + str(precip_day) + "\n")
                 f.write("Vent = " + str(wind_kph) + " km/h\n")
                 f.write("Dir_vent = " + wind_dir + "\n")
-                f.write("Vent_1_Derniere_observation = " + wind_1_last_obs.encode('utf8') + "\n")
+                f.write("Vent_1_Derniere_observation = " + wind_1_last_obs + "\n")
                 f.write("Vent_1 = " + str(wind_kph_1) + " km/h\n")
                 f.write("Dir_vent_1 = " + str(wind_dir_1) + "\n")
-                f.write("Vent_2_Derniere_observation = " + wind_2_last_obs.encode('utf8') + "\n")
+                f.write("Vent_2_Derniere_observation = " + wind_2_last_obs + "\n")
                 f.write("Vent_2 = " + str(wind_kph_2) + " km/h\n")
                 f.write("Dir_vent_2 = " + str(wind_dir_2) + "\n")
                 f.write("Pression = " + str(pressure_mb) + " mb\n")
-                f.write("Tend_pres = " + pressure_trend.encode('utf8') + "\n") #Ok, l'utf8 ne sert à rien là
+                f.write("Tend_pres = " + pressure_trend + "\n") 
                 f.write("Visibilite = " + str(visibility) + " km\n")
                 f.write("Indice_UV = " + str(UV) + "\n")
                 f.write("Maison_salon_temp = " + self.influxDbGetLastPoint(INFLUX_HOME_TEMP_FIELD) + "\n")
@@ -281,10 +276,10 @@ class App():
                             f.write(date + "_jour = "  + str(jour) + "\n")
                             f.write(date + "_mois = "  + str(mois) + "\n") 
                             f.write(date + "_annee = "  + str(annee) + "\n")     
-                            f.write(date + "_jour_sem = "  + jour_sem.encode('utf8') + "\n")  # C'est du luxe, il n'y a pas d'accent dans les jours de la semaine
+                            f.write(date + "_jour_sem = "  + jour_sem + "\n")
                             f.write(date + "_tempmax = "  + str(tempmax) + " °C\n")     
                             f.write(date + "_tempmin = "  + str(tempmin) + " °C\n")                              
-                            f.write(date + "_conditions = " + condition.encode('utf8') + "\n")
+                            f.write(date + "_conditions = " + condition + "\n")
                             f.write(date + "_icone = " + icon + "\n")
                             f.write(date + "_pop = "  + str(pop) + "%\n")            
                             f.write(date + "_hauteur_precip = "  + str(hauteur_precip) + " mm\n")            
@@ -318,7 +313,7 @@ class App():
             to_zone = tz.tzlocal()
             localDate = utcDate.astimezone(to_zone)
             return str(round(list(val.get_points())[0]['value'], 2)) + " " + localDate.strftime('%d/%m/%Y-%H:%M')
-        except Exception, detail:
+        except Exception as detail:
             logger.error( 'Error when getting influxdb point field %s - %s', valueId, detail)
             return NA_FIELD
                 
@@ -341,14 +336,10 @@ class App():
             icone = icon
         return icone
 
-
-# Toujours commencer la lecture d'un programme python par la fin. C'est là qu'on lance le démon
-app = App()
-daemon_runner = runner.DaemonRunner(app)
-#Preserve log file descriptor in daemon context
-daemon_runner.daemon_context.files_preserve=[fh.stream]
-try :
-    daemon_runner.do_action()
-except lockfile.LockTimeout:
-    logger.error( "Unable to lock %s", app.pidfile_path )
-#app.run()
+if __name__ == '__main__':
+    print("prout")
+    # Toujours commencer la lecture d'un programme python par la fin. C'est là qu'on lance le démon
+    app = App()
+    pidfile = lockfile.pidlockfile.PIDLockFile("/tmp/pws.pid")
+    with daemon.DaemonContext(stdout=sys.stdout, stderr=sys.stderr, files_preserve = [fh.stream], pidfile=pidfile):
+        app.run()

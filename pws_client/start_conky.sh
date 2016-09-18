@@ -36,7 +36,7 @@ do
 done
 
 #wait here to have conky over background
-if conky -d -c $PWS_CLIENT_PROJECT_PATH/conky/conkyrc_pws_obs
+if conky -d -D -c $PWS_CLIENT_PROJECT_PATH/conky/conkyrc_pws_obs 2>&1
 then
     echo "PWS widget successfully displayed"
 else
