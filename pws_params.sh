@@ -29,6 +29,10 @@ export INFLUXDB_SERIES_SUFFIX=""
 export INFLUXDB_HOME_TEMP_FIELD=""
 export INFLUXDB_HOME_HUMIDITY_FIELD=""
 
+# Rhone Alpes Air network
+# Rhone Alpes station id: http://www.air-rhonealpes.fr/donnees/acces-par-station
+export POLLUTION_STATION_ID=""
+
 # where are polling data
 export PWS_POLLING_DATA_PATH=""
 

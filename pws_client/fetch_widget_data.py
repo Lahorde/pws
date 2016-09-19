@@ -16,7 +16,11 @@ import os.path
 import os
 import urllib
 import urllib.request
+import codecs
 import json
+import csv
+import datetime
+import dateutil.parser
 import sys, traceback
 # import pour le démon
 import time
@@ -48,6 +52,8 @@ try:
     INFLUXDB_NAME = os.environ["INFLUXDB_NAME"]
     INFLUX_HOME_TEMP_FIELD = os.environ["INFLUXDB_HOME_TEMP_FIELD"]
     INFLUXDB_HOME_HUMIDITY_FIELD = os.environ["INFLUXDB_HOME_HUMIDITY_FIELD"]
+    #data pollution
+    POLLUTION_STATION_ID = os.environ["POLLUTION_STATION_ID"]
     
 except KeyError as e:
     print("Avant de lancer le script - renseigner la configuration dans ../pws_params.sh - parametre manquant : %s" %e)
@@ -204,6 +210,32 @@ class LastObservations():
                 f.write("Indice_UV = " + str(UV) + "\n")
                 f.write("Maison_salon_temp = " + self.influxDbGetLastPoint(INFLUX_HOME_TEMP_FIELD) + "\n")
                 f.write("Maison_salon_hum = " + self.influxDbGetLastPoint(INFLUXDB_HOME_HUMIDITY_FIELD) + "\n")             
+                
+                #Add pollution data
+                poll_data = LastObservations.getRAPollutionData(POLLUTION_STATION_ID)
+                dioxyde_azote="NA"
+                monoxyde_azote = "NA"
+                ozone = "NA"
+                pm_10 = "NA"
+                poll_station="NA"
+                poll_timestamp="NA"
+                if len(poll_data) != 0 :
+                    try :
+                        dioxyde_azote = poll_data['Dioxyde d\'azote'][0]
+                        monoxyde_azote = poll_data['Monoxyde d\'azote'][0]
+                        ozone = poll_data['Ozone'][0]
+                        pm_10 = poll_data['Particules PM10'][0]
+                        poll_station = poll_data['Station']
+                        poll_timestamp=poll_data['Timestamp']
+                    except Exception as e:
+                        logger.error("Some pollution fields are missing - %s", e)
+                    
+                f.write('Poll_station = ' + poll_station + '\n') 
+                f.write('Poll_timestamp = ' + poll_timestamp + '\n')
+                f.write('Dioxyde_azote = ' + dioxyde_azote + '\n') 
+                f.write('Monoxyde_azote = ' + monoxyde_azote + '\n') 
+                f.write('Ozone = ' + ozone + '\n') 
+                f.write('PM10 = ' + pm_10 + '\n') 
             
             # Je récupère les prévisions sous le tag "simpleforecast", en bouclant sur chacune des périodes
             forecast = parsed_json_forecast['forecast']['simpleforecast']['forecastday']
@@ -282,7 +314,63 @@ class LastObservations():
         except Exception as detail:
             logger.error( 'Error when getting influxdb point field %s - %s', valueId, detail)
             return NA_FIELD
-                
+        
+    @staticmethod   
+    def getRAPollutionData(station_id):
+        try :
+            last_url = 'http://www.air-rhonealpes.fr/aasqa_air_station/download-data/' + station_id + '/periodicity/2'
+            page_csv_poll = urllib.request.urlopen(last_url)
+            # http://stackoverflow.com/questions/18897029/read-csv-file-from-url-into-python-3-x-csv-error-iterator-should-return-str
+            # Do not use ftpstream.read().decode('utf-8')
+            read_data = codecs.iterdecode(page_csv_poll, 'utf_8_sig')
+        except Exception as e :
+            logger.error('Cannot get RhoneAlpes pollution data for station %s - %s', station_id, e)
+            return {}
+        
+        # Create a custom dialect
+        # http://stackoverflow.com/questions/6879596/why-is-the-python-csv-reader-ignoring-double-quoted-fields
+        csv.register_dialect(
+            'air-rhonealpes_data',
+            delimiter = ';',
+            quotechar = '"',
+            doublequote = True,
+            skipinitialspace = True,
+            lineterminator = '\r\n',
+            quoting = csv.QUOTE_MINIMAL)    
+    
+        # Iterator returned by DictReader must be used several times.
+        # It needs to be resetted, simple way is to make a list but
+        # in this case whole CSV is loaded into memory
+        cr = list(csv.DictReader(read_data, dialect='air-rhonealpes_data'))
+        
+        # Get last observation parsing all fields to date for a given row 
+        last_meas = None
+        first_row = cr[0]
+        for field in first_row :
+            try :
+                dt = parse(field)
+                if (last_meas is None) or (dt > parse(last_meas)) :
+                    last_meas = field
+            except :
+                #field is not a date ignore it                
+                continue
+            
+        #Reject last observation if too old    
+        if(datetime.datetime.now() - parse(last_meas)).total_seconds() > 60*60  :
+            logger.info("Pollution data is too old - date = %s", last_meas)
+            return {} 
+        ret = {}   
+        value = None
+        for row in cr :
+            if (row[last_meas]) == "-" :
+                value = "NA"
+            else : 
+                value = row[last_meas]
+            ret[row['Polluant']]=(value, row['Unité'])  
+        ret['Station'] = first_row['Station']
+        ret['Timestamp'] = parse(last_meas).strftime('%H:%M') 
+        return ret        
+
     @staticmethod
     def addWeatherIconSuffix(icon, skyicon):
         # Encore un petit test pour les icones. Je combine icon et skyicon pour avoir la représentation graphique 
