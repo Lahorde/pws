@@ -10,19 +10,16 @@ fi
 
 if [ $AQI -lt 35 ]
 then
-  color='76D250'
+  color='green'
 elif [ $AQI -ge 35 ] && [ $AQI -lt 50 ]
 then  
-  color='FBD948'
+  color='yellow'
 elif [ $AQI -ge 50 ] && [ $AQI -lt 75 ] 
 then  
-  color='F119B48'
-elif [ $AQI -ge 75 ] && [ $AQI -lt 100 ] 
-then  
-  color='D93241'
+  color='orange'
 else
   color='red'
 fi
 
-echo -n "\${color $color}"
+echo -n "\${image $PWS_CLIENT_PROJECT_PATH/icons/aqi_${color}.png -p $1,$2 -s $3x$3}"
 exit 0
