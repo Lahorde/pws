@@ -22,12 +22,12 @@ import csv
 import datetime
 import dateutil.parser
 import sys, traceback
-# import pour le démon
 import time
 import daemon
 import lockfile.pidlockfile 
 from dateutil.parser import parse
 from dateutil import tz
+from datetime import timezone
 import logging
 from influxdb import client as influxdb
 
@@ -54,7 +54,11 @@ try:
     INFLUXDB_HOME_HUMIDITY_FIELD = os.environ["INFLUXDB_HOME_HUMIDITY_FIELD"]
     #data pollution
     POLLUTION_STATION_ID = os.environ["POLLUTION_STATION_ID"]
-    
+    AIR_VISUAL_KEY=os.environ["AIR_VISUAL_KEY"]
+    AIR_VISUAL_STATION_LAT=os.environ["AIR_VISUAL_STATION_LAT"]
+    AIR_VISUAL_STATION_LONG=os.environ["AIR_VISUAL_STATION_LONG"]
+
+
 except KeyError as e:
     print("Avant de lancer le script - renseigner la configuration dans ../pws_params.sh - parametre manquant : %s" %e)
     sys.exit(2)
@@ -67,7 +71,7 @@ except KeyError as e:
 class LastObservations(): 
     def __init__(self):
         self.db = influxdb.InfluxDBClient(INFLUX_DB_HOST_URL, INFLUX_DB_HOST_PORT, INFLUX_DB_USER, INFLUX_DB_PASS)
-    
+
     def getJSON(self, url):
         try:
             resp = urllib.request.urlopen(url)
@@ -82,10 +86,10 @@ class LastObservations():
 
     def run(self):
         logger.info("starting wu_pws_polling loop")
-        
+
         while True: # C'est le début de ma boucle pour démoniser mon programme
             logger.info( "Polling weather data...")
-        
+
             ###############################################
             #           Le corps du programme             #
             ###############################################
@@ -93,15 +97,15 @@ class LastObservations():
             # en une seule fois (forecast et conditions), et en français
             # Un exemple de code est fourni sur le site wunderground
             parsed_json_pws, parsed_json_forecast, parsed_json_wind_1, parsed_json_wind_2 = None, None, None, None
-            
+
             parsed_json_pws = self.getJSON('http://api.wunderground.com/api/' + API_KEY + '/conditions/lang:FR/q/pws:' + PWS_ID + '.json')
             try:
                 pws_city = parsed_json_pws['current_observation']['display_location']['city'] # la ville où se situe la pws
-                
+
             except KeyError as e: 
                 logger.error( "Unable to parse PWS city from JSON content - %s",  e )
                 sys.exit(2) 
-            
+
             parsed_json_forecast = self.getJSON('http://api.wunderground.com/api/' + API_KEY + '/forecast/conditions/lang:FR/q/France/' + pws_city + '.json')
             # WIND    
             page_json_wind_1 = self.getJSON('http://api.wunderground.com/api/' + API_KEY + VENT_1_URL_SUFFIX)
@@ -138,12 +142,12 @@ class LastObservations():
                 precip_last_hr = parsed_json_pws['current_observation']['precip_1hr_metric'] # cumul précipitations sur la dernière heure
                 precip_day = parsed_json_pws['current_observation']['precip_today_metric'] # cumul précipitations sur 24h
                 UV = parsed_json_pws['current_observation']['UV'] # l'indice UV
-                
+
             except Exception as e:
                 logger.error( "Impossible de parser les observations de la pws %s", e)
                 sys.exit(2) 
 
-				# vent
+                                # vent
             wind_1_last_obs, wind_kph_1, wind_dir_1, wind_2_last_obs, wind_kph_2, wind_dir_2 = NA_FIELD, NA_FIELD, NA_FIELD, NA_FIELD, NA_FIELD, NA_FIELD            
             try:
                 if parsed_json_wind_1 != None :
@@ -155,32 +159,32 @@ class LastObservations():
 
             except KeyError as e:  
                 logger.error( "Erreur sur les observations de vent - pas de clé pour %s", e )
-            
+
             try:
                 if parsed_json_wind_2 != None :
-                  #piou piou
+                    #piou piou
                   wind_2_last_obs = parsed_json_wind_2['data']['measurements']['date'] # l'heure dernière observation
                   wind_2_last_obs = parse(wind_2_last_obs)
                   wind_2_last_obs = wind_2_last_obs.strftime('%d/%m/%Y-%H:%M')
                   wind_kph_2 = parsed_json_wind_2['data']['measurements']['wind_speed_avg'] # la vitesse du vent
                   wind_dir_2 = parsed_json_wind_2['data']['measurements']['wind_heading']# l'orientation du vent
-              
+
             except Exception as e:
                 logger.error( "Impossible de parser les observations de pioupiou", e)
-            
+
             # Un petit test sur l'indice UV qui peut être négatif
             if str(UV) == '-1':
                 UV = 0
-            
+
             # Une petite transformation de la tendance atmosphérique
-            
+
             if pressure_trend == '-':
                 pressure_trend = 'en baisse'
             elif pressure_trend == '+':
                 pressure_trend = 'en hausse'
             else:
                 pressure_trend = 'stable'
-            
+
             # J'écris ces informations dans un fichier qui servira plus tard pour le conky meteo.
             # En ouvrant le fichier en mode 'w', j'écrase le fichier meteo.txt précédent 
             # Je transforme tous les chiffres en chaînes de caractères et j'encode tous les textes français en UTF8    
@@ -210,16 +214,22 @@ class LastObservations():
                 f.write("Indice_UV = " + str(UV) + "\n")
                 f.write("Maison_salon_temp = " + self.influxDbGetLastPoint(INFLUX_HOME_TEMP_FIELD) + "\n")
                 f.write("Maison_salon_hum = " + self.influxDbGetLastPoint(INFLUXDB_HOME_HUMIDITY_FIELD) + "\n")             
-                
+
                 #Add pollution data
                 poll_data = LastObservations.getRAPollutionData(POLLUTION_STATION_ID)
+                aqi_data = self.getAQI(AIR_VISUAL_STATION_LAT, AIR_VISUAL_STATION_LONG)
+
                 dioxyde_azote="NA"
                 monoxyde_azote = "NA"
                 ozone = "NA"
                 pm_10 = "NA"
                 poll_station="NA"
                 poll_timestamp="NA"
-                if len(poll_data) != 0 :
+                pm_2_5 = "NA"
+                aqi = "NA"
+                aqi_ts = "NA"
+
+                if len(poll_data) > 0 :
                     try :
                         dioxyde_azote = poll_data['Dioxyde d\'azote'][0]
                         monoxyde_azote = poll_data['Monoxyde d\'azote'][0]
@@ -227,16 +237,24 @@ class LastObservations():
                         pm_10 = poll_data['Particules PM10'][0]
                         poll_station = poll_data['Station']
                         poll_timestamp=poll_data['Timestamp']
+                        pm_2_5 = poll_data['Particules PM2,5'][0]
                     except Exception as e:
                         logger.error("Some pollution fields are missing - %s", e)
-                    
+
+                if len(aqi_data) > 0 :
+                    aqi = aqi_data['AQI']
+                    aqi_ts = aqi_data['AQI_timestamp']
+
                 f.write('Poll_station = ' + poll_station + '\n') 
                 f.write('Poll_timestamp = ' + poll_timestamp + '\n')
                 f.write('Dioxyde_azote = ' + dioxyde_azote + '\n') 
                 f.write('Monoxyde_azote = ' + monoxyde_azote + '\n') 
                 f.write('Ozone = ' + ozone + '\n') 
                 f.write('PM10 = ' + pm_10 + '\n') 
-            
+                f.write('PM2_5 = ' + pm_2_5 + '\n') 
+                f.write('AQI = ' + str(aqi) + '\n')
+                f.write('AQI_ts = ' + aqi_ts + '\n')
+
             # Je récupère les prévisions sous le tag "simpleforecast", en bouclant sur chacune des périodes
             forecast = parsed_json_forecast['forecast']['simpleforecast']['forecastday']
             for i in forecast:
@@ -266,31 +284,31 @@ class LastObservations():
                     date = 'jour3'
                 elif period == 4:
                     date = 'jour4'
-                
+
                 icon = LastObservations.addWeatherIconSuffix(icon, skyicon)
-                
+
                 # J'écris à la suite, grâce à l'option 'a' append au lieu de 'w'
                 with open(POLLED_DATA_PATH, 'a') as f:
-                            f.write(date + "_jour = "  + str(jour) + "\n")
-                            f.write(date + "_mois = "  + str(mois) + "\n") 
-                            f.write(date + "_annee = "  + str(annee) + "\n")     
-                            f.write(date + "_jour_sem = "  + jour_sem + "\n")
-                            f.write(date + "_tempmax = "  + str(tempmax) + " °C\n")     
-                            f.write(date + "_tempmin = "  + str(tempmin) + " °C\n")                              
-                            f.write(date + "_conditions = " + condition + "\n")
-                            f.write(date + "_icone = " + icon + "\n")
-                            f.write(date + "_pop = "  + str(pop) + "%\n")            
-                            f.write(date + "_hauteur_precip = "  + str(hauteur_precip) + " mm\n")            
-                            f.write(date + "_hauteur_neige = "  + str(hauteur_neige) + " cm\n")            
-                            f.write(date + "_vent = "  + str(vent) + " km/h\n")            
-                            f.write(date + "_dir_vent = "  + vent_dir + "\n")             
-                            f.write(date + "_tx_himidite = "  + str(tx_humidite) + "%\n")          
+                    f.write(date + "_jour = "  + str(jour) + "\n")
+                    f.write(date + "_mois = "  + str(mois) + "\n") 
+                    f.write(date + "_annee = "  + str(annee) + "\n")     
+                    f.write(date + "_jour_sem = "  + jour_sem + "\n")
+                    f.write(date + "_tempmax = "  + str(tempmax) + " °C\n")     
+                    f.write(date + "_tempmin = "  + str(tempmin) + " °C\n")                              
+                    f.write(date + "_conditions = " + condition + "\n")
+                    f.write(date + "_icone = " + icon + "\n")
+                    f.write(date + "_pop = "  + str(pop) + "%\n")            
+                    f.write(date + "_hauteur_precip = "  + str(hauteur_precip) + " mm\n")            
+                    f.write(date + "_hauteur_neige = "  + str(hauteur_neige) + " cm\n")            
+                    f.write(date + "_vent = "  + str(vent) + " km/h\n")            
+                    f.write(date + "_dir_vent = "  + vent_dir + "\n")             
+                    f.write(date + "_tx_himidite = "  + str(tx_humidite) + "%\n")          
             ############################################
             #             Le fin du programme          #
             ############################################  
             #SUR WU 10 call/minute ou 500 call /jour max lorsque l'utilisateur a une clé développeur
             time.sleep(600) # C'est la fin de ma boucle de démonisation. La temporisation est de 120 secondes  
-        
+
     def influxDbGetLastPoint(self, valueId):
         # read in the data from influxdb
         try:
@@ -305,7 +323,7 @@ class LastObservations():
 
             val = self.db.query('select * from ' + valueId + INFLUXDB_SERIES_SUFFIX + ' where time>now() - 10m order by time desc limit 1')
             utcDate = parse(list(val.get_points())[0]['time'])            
-            
+
             #convert UTC date to local date 
             from_zone = tz.tzutc()
             to_zone = tz.tzlocal()
@@ -314,7 +332,24 @@ class LastObservations():
         except Exception as detail:
             logger.error( 'Error when getting influxdb point field %s - %s', valueId, detail)
             return NA_FIELD
-        
+
+    def getAQI(self, lat, longitude):
+        ret = {}
+        try:
+            air_visual_api_json = self.getJSON('http://api.airvisual.com/v1/nearest?lat=' + lat + '&lon=' + longitude + '&key=' + AIR_VISUAL_KEY)
+            aqi_ts = parse(air_visual_api_json['data']['current']['pollution']['ts'])
+
+            #Reject data if too old    
+            if (datetime.datetime.now(timezone.utc) - aqi_ts).total_seconds() > 60*60*12  :
+                logger.info("AQI data is too old - date = %s", aqi_ts)
+            else : 
+                ret['AQI'] = air_visual_api_json['data']['current']['pollution']['aqius']
+                ret['AQI_timestamp'] = aqi_ts.strftime('%H:%M')  
+        except Exception as e:
+            logger.error('Cannot get AQI for (%s, %s) - %s', lat, longitude, e)
+        finally :
+            return ret;
+
     @staticmethod   
     def getRAPollutionData(station_id):
         try :
@@ -326,23 +361,23 @@ class LastObservations():
         except Exception as e :
             logger.error('Cannot get RhoneAlpes pollution data for station %s - %s', station_id, e)
             return {}
-        
+
         # Create a custom dialect
         # http://stackoverflow.com/questions/6879596/why-is-the-python-csv-reader-ignoring-double-quoted-fields
         csv.register_dialect(
-            'air-rhonealpes_data',
-            delimiter = ';',
-            quotechar = '"',
-            doublequote = True,
-            skipinitialspace = True,
-            lineterminator = '\r\n',
-            quoting = csv.QUOTE_MINIMAL)    
-    
+                'air-rhonealpes_data',
+                delimiter = ';',
+                quotechar = '"',
+                doublequote = True,
+                skipinitialspace = True,
+                lineterminator = '\r\n',
+                quoting = csv.QUOTE_MINIMAL)    
+
         # Iterator returned by DictReader must be used several times.
         # It needs to be resetted, simple way is to make a list but
         # in this case whole CSV is loaded into memory
         cr = list(csv.DictReader(read_data, dialect='air-rhonealpes_data'))
-        
+
         # Get last observation parsing all fields to date for a given row 
         last_meas = None
         first_row = cr[0]
@@ -354,9 +389,9 @@ class LastObservations():
             except :
                 #field is not a date ignore it                
                 continue
-            
+
         #Reject last observation if too old    
-        if(datetime.datetime.now() - parse(last_meas)).total_seconds() > 60*60  :
+        if(datetime.datetime.now() - parse(last_meas, dayfirst=True)).total_seconds() > 60*60  :
             logger.info("Pollution data is too old - date = %s", last_meas)
             return {} 
         ret = {}   
@@ -368,7 +403,7 @@ class LastObservations():
                 value = row[last_meas]
             ret[row['Polluant']]=(value, row['Unité'])  
         ret['Station'] = first_row['Station']
-        ret['Timestamp'] = parse(last_meas).strftime('%H:%M') 
+        ret['Timestamp'] = parse(last_meas, dayfirst=True).strftime('%H:%M')
         return ret        
 
     @staticmethod
@@ -399,7 +434,7 @@ if __name__ == '__main__':
     fh.setFormatter(formatter)
     logger.addHandler(fh)
     logger.info("starting wu_pws_polling script")
-    
+
     lastObs = LastObservations()
     pidfile = lockfile.pidlockfile.PIDLockFile("/tmp/pws.pid")
     with daemon.DaemonContext(stdout=sys.stdout, stderr=sys.stderr, files_preserve = [fh.stream], pidfile=pidfile):

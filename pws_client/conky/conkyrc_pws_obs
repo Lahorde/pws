@@ -88,9 +88,9 @@ ${goto 240}${voffset -80}Chamrousse${goto 305}(${execp grep Vent_1_Derniere_obse
   #------------------
   ${voffset 30}${goto 30}${color #393835}${hr 1}
   ${execp echo "\${image $PWS_CLIENT_PROJECT_PATH/icons/air_quality2.png -p 40,242 -s 50x50}"}
-  ${voffset -15}${color}${font source sans pro :size=8:bold}${goto 130}Pollution à ${execp grep Poll_station /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'} ${execp grep Poll_timestamp /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${font}
-  ${goto 135}NO2${goto 180}NO${goto 220}Ozone${goto 280}PM10${goto 330}PM2.5
-  ${font source sans pro :size=9:bold}${goto 135}${execp grep Dioxyde_azote /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${goto 180}${execp grep Monoxyde_azote /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${goto 220}${execp grep Ozone /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${goto 280}${execp grep PM10 /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${goto 330}${execp grep PM2.5 /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${font}
+  ${voffset -15}${color}${font source sans pro :size=9:bold}${goto 130}Pollution à ${execp grep Poll_station /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'} à  ${execp grep Poll_timestamp /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}   -   ${execp $PWS_CLIENT_PROJECT_PATH/conky/scripts/get_aqi_color.sh}LQI ${font source sans pro :size=10:bold}${execp grep 'AQI ' /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${color}${font}
+  ${goto 135}NO2${goto 190}NO${goto 240}Ozone${goto 310}PM10${goto 370}PM2.5
+  ${font source sans pro :size=9:bold}${goto 135}${execp grep Dioxyde_azote /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${goto 190}${execp grep Monoxyde_azote /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${goto 240}${execp grep Ozone /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${goto 310}${execp grep PM10 /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${goto 370}${execp grep PM2_5 /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${font}
   #--------------------
   #--- Info maison ----
   #--------------------
