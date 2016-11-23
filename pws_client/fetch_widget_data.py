@@ -35,7 +35,6 @@ NA_FIELD = "--"
 
 try:
     API_KEY = os.environ["WU_KEY"]
-    LOGGER_FILE = os.environ["PWS_LOG_PATH"]
     PWS_ID = os.environ["WU_PWS_ID"]
     # emplacement du fichier où sont écrites les informations extraites depuis weather underground
     POLLED_DATA_PATH = os.environ["PWS_POLLING_DATA_PATH"]
@@ -81,14 +80,14 @@ class LastObservations():
             return parsed_json
 
         except Exception as e :
-            logger.error( "Unable to get parsed json data from %s - %s", url, e )
+            print( "Unable to get parsed json data from {} - {}".format( url, e), file=sys.stderr)
             sys.exit(2)
 
     def run(self):
-        logger.info("starting wu_pws_polling loop")
+        print("starting wu_pws_polling loop")
 
         while True: # C'est le début de ma boucle pour démoniser mon programme
-            logger.info( "Polling weather data...")
+            print( "Polling weather data...")
 
             ###############################################
             #           Le corps du programme             #
@@ -103,7 +102,7 @@ class LastObservations():
                 pws_city = parsed_json_pws['current_observation']['display_location']['city'] # la ville où se situe la pws
 
             except KeyError as e: 
-                logger.error( "Unable to parse PWS city from JSON content - %s",  e )
+                print( "Unable to parse PWS city from JSON content - {}".format(e), file=sys.stderr)
                 sys.exit(2) 
 
             parsed_json_forecast = self.getJSON('http://api.wunderground.com/api/' + API_KEY + '/forecast/conditions/lang:FR/q/France/' + pws_city + '.json')
@@ -144,7 +143,7 @@ class LastObservations():
                 UV = parsed_json_pws['current_observation']['UV'] # l'indice UV
 
             except Exception as e:
-                logger.error( "Impossible de parser les observations de la pws %s", e)
+                print( "Impossible de parser les observations de la pws {}".format(e), file=sys.stderr)
                 sys.exit(2) 
 
                                 # vent
@@ -158,7 +157,7 @@ class LastObservations():
                   wind_dir_1 = parsed_json_wind_1['current_observation']['wind_dir'] # l'orientation du vent
 
             except KeyError as e:  
-                logger.error( "Erreur sur les observations de vent - pas de clé pour %s", e )
+                print( "Erreur sur les observations de vent - pas de clé pour {}".format(e), file=sys.stderr) 
 
             try:
                 if parsed_json_wind_2 != None :
@@ -170,7 +169,7 @@ class LastObservations():
                   wind_dir_2 = parsed_json_wind_2['data']['measurements']['wind_heading']# l'orientation du vent
 
             except Exception as e:
-                logger.error( "Impossible de parser les observations de pioupiou", e)
+                print( "Impossible de parser les observations de pioupiou - {}".format(e), file=sys.stderr)
 
             # Un petit test sur l'indice UV qui peut être négatif
             if str(UV) == '-1':
@@ -239,7 +238,7 @@ class LastObservations():
                         poll_timestamp=poll_data['Timestamp']
                         pm_2_5 = poll_data['Particules PM2,5'][0]
                     except Exception as e:
-                        logger.error("Some pollution fields are missing - %s", e)
+                        print("Some pollution fields are missing - {}".format(e), file=sys.stderr)
 
                 if len(aqi_data) > 0 :
                     aqi = aqi_data['AQI']
@@ -316,7 +315,7 @@ class LastObservations():
             all_dbs_list = self.db.get_list_database()
 
             if INFLUXDB_NAME not in [str(x['name']) for x in all_dbs_list]:
-                logger.error("{0} not in dd list".format(INFLUXDB_NAME))
+                print("{0} not in db list".format(INFLUXDB_NAME), file=sys.stderr)
                 return NA_FIELD
             else :   
                 self.db.switch_database(INFLUXDB_NAME)
@@ -330,7 +329,7 @@ class LastObservations():
             localDate = utcDate.astimezone(to_zone)
             return str(round(list(val.get_points())[0]['value'], 2)) + " " + localDate.strftime('%d/%m/%Y-%H:%M')
         except Exception as detail:
-            logger.error( 'Error when getting influxdb point field %s - %s', valueId, detail)
+            print( 'Error when getting influxdb point field {} - {}'.format(valueId, detail), file=sys.stderr)
             return NA_FIELD
 
     def getAQI(self, lat, longitude):
@@ -341,12 +340,12 @@ class LastObservations():
 
             #Reject data if too old    
             if (datetime.datetime.now(timezone.utc) - aqi_ts).total_seconds() > 60*60*12  :
-                logger.info("AQI data is too old - date = %s", aqi_ts)
+                print("AQI data is too old - date = {}".format(aqi_ts))
             else : 
                 ret['AQI'] = air_visual_api_json['data']['current']['pollution']['aqius']
                 ret['AQI_timestamp'] = aqi_ts.strftime('%H:%M')  
         except Exception as e:
-            logger.error('Cannot get AQI for (%s, %s) - %s', lat, longitude, e)
+            print('Cannot get AQI for ({}, {}) - {}'.format(lat, longitude, e), file=sys.stderr)
         finally :
             return ret;
 
@@ -359,7 +358,7 @@ class LastObservations():
             # Do not use ftpstream.read().decode('utf-8')
             read_data = codecs.iterdecode(page_csv_poll, 'utf_8_sig')
         except Exception as e :
-            logger.error('Cannot get RhoneAlpes pollution data for station %s - %s', station_id, e)
+            print('Cannot get RhoneAlpes pollution data for station {} - {}'.format(station_id, e), file=sys.stderr)
             return {}
 
         # Create a custom dialect
@@ -392,7 +391,7 @@ class LastObservations():
 
         #Reject last observation if too old    
         if(datetime.datetime.now() - parse(last_meas, dayfirst=True)).total_seconds() > 60*60*3  :
-            logger.info("Pollution data is too old - date = %s", last_meas)
+            print("Pollution data is too old - date = {}".format(last_meas))
             return {} 
         ret = {}   
         value = None
@@ -426,16 +425,9 @@ class LastObservations():
         return icone
 
 if __name__ == '__main__':
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    fh = logging.FileHandler(LOGGER_FILE)
-    # create formatter and add it to the handlers
-    formatter = logging.Formatter('%(asctime)s - ' + os.path.basename(__file__) + ' - %(levelname)s - %(message)s')
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-    logger.info("starting wu_pws_polling script")
+    print("starting wu_pws_polling script")
 
     lastObs = LastObservations()
     pidfile = lockfile.pidlockfile.PIDLockFile("/tmp/pws.pid")
-    with daemon.DaemonContext(stdout=sys.stdout, stderr=sys.stderr, files_preserve = [fh.stream], pidfile=pidfile):
+    with daemon.DaemonContext(stdout=sys.stdout, stderr=sys.stderr, pidfile=pidfile):
         lastObs.run()

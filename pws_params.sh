@@ -33,8 +33,11 @@ export INFLUXDB_HOME_HUMIDITY_FIELD=""
 # Rhone Alpes station id: http://www.air-rhonealpes.fr/donnees/acces-par-station
 export POLLUTION_STATION_ID=""
 
+# Air Visual API
+export AIR_VISUAL_KEY=""
+export AIR_VISUAL_STATION_LAT=""
+export AIR_VISUAL_STATION_LONG=""
+
 # where are polling data
 export PWS_POLLING_DATA_PATH=""
 
-# logs
-export PWS_LOG_PATH=""
