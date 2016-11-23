@@ -321,7 +321,7 @@ class LastObservations():
             else :   
                 self.db.switch_database(INFLUXDB_NAME)
 
-            val = self.db.query('select * from ' + valueId + INFLUXDB_SERIES_SUFFIX + ' where time>now() - 10m order by time desc limit 1')
+            val = self.db.query('select * from ' + valueId + '_' + INFLUXDB_SERIES_SUFFIX + ' where time>now() - 10m order by time desc limit 1')
             utcDate = parse(list(val.get_points())[0]['time'])            
 
             #convert UTC date to local date 
@@ -391,7 +391,7 @@ class LastObservations():
                 continue
 
         #Reject last observation if too old    
-        if(datetime.datetime.now() - parse(last_meas, dayfirst=True)).total_seconds() > 60*60  :
+        if(datetime.datetime.now() - parse(last_meas, dayfirst=True)).total_seconds() > 60*60*3  :
             logger.info("Pollution data is too old - date = %s", last_meas)
             return {} 
         ret = {}   
