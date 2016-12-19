@@ -1,7 +1,7 @@
 # PWS
 ## Description
-
-Connect your Personal Weather Station (PWS) and get its data on a nice desktop widget.
+Connect your Personal Weather Station (PWS).
+Display your PWS data (or another PWS frow wunderground) and many other weather / pollution data on your desktop with a nice widget.
 
 ## Steps
 
@@ -24,7 +24,26 @@ Here are your pws page on wunderground :
 ![alt text](https://github.com/Lahorde/pws/raw/master/snapshot/weather_underground.png)
 
 ## pws_client - results
+### configuration
+Set needed parameters in : 
 
+    your_folder/pws/pws_params.sh
+    
+Enable pws_service :
+
+    sudo ln -s your_folder/pws/pws_client/pws.service /etc/systemd/system
+    sudo systemctl enable pws
+    sudo systemctl start pws
+    
+To get pws logs :
+
+    journalctl -u pws -f
+    
+Start user pws widget (either using systemd user units, or using automatic application startup):
+
+    bash -c "sleep 3 && your_folder/pws/pws_client/start_conky.sh > /tmp/pws_widget.log"
+
+### results
 Here is result in xfce :
 
 ![alt text](https://github.com/Lahorde/pws/raw/master/snapshot/pws_conky.jpg)
