@@ -380,27 +380,43 @@ class LastObservations():
         # Get last observation parsing all fields to date for a given row 
         last_meas = None
         first_row = cr[0]
+        dates=[] 
         for field in first_row :
             try :
-                dt = parse(field)
-                if (last_meas is None) or (dt > parse(last_meas)) :
-                    last_meas = field
+                parse(field) 
+                dates.append(field)
             except :
                 #field is not a date ignore it                
                 continue
+        
+        # sort dates in ascending order
+        dates = sorted(dates, key=lambda x: datetime.datetime.strptime(x, '%d/%m/%Y %H:%M'))
 
-        #Reject last observation if too old    
-        if(datetime.datetime.now() - parse(last_meas, dayfirst=True)).total_seconds() > 60*60*3  :
-            print("Pollution data is too old - date = {}".format(last_meas))
-            return {} 
         ret = {}   
         value = None
-        for row in cr :
-            if (row[last_meas]) == "-" :
-                value = "NA"
-            else : 
-                value = row[last_meas]
-            ret[row['Polluant']]=(value, row['Unité'])  
+        for date_index in range(len(dates)) :
+            # check if some pollution data for a given date have been measured
+            data_available=False
+            # iterate over polluants 
+            for row in cr :
+                if (row[dates[len(dates)-1-date_index]]) == "-" :
+                    value = "NA"
+                else : 
+                    data_available = True 
+                    value = row[dates[len(dates)-1-date_index]]
+                ret[row['Polluant']]=(value, row['Unité'])  
+            if data_available :
+                # We have some pollution data for a given date, 
+                # exit loop over measure dates
+                last_meas=dates[len(dates)-1-date_index] 
+                break
+                
+        #Reject last observation if too old    
+        if(datetime.datetime.now() - parse(last_meas, dayfirst=True)).total_seconds() > 60*60*3 :
+            print("Pollution data is too old - date = {}".format(last_meas))
+            return {} 
+       
+        # Append station info
         ret['Station'] = first_row['Station']
         ret['Timestamp'] = parse(last_meas, dayfirst=True).strftime('%H:%M')
         return ret        
