@@ -377,8 +377,7 @@ class LastObservations():
         # in this case whole CSV is loaded into memory
         cr = list(csv.DictReader(read_data, dialect='air-rhonealpes_data'))
 
-        # Get last observation parsing all fields to date for a given row 
-        last_meas = None
+        # Get all dates date for a given row 
         first_row = cr[0]
         dates=[] 
         for field in first_row :
@@ -392,6 +391,7 @@ class LastObservations():
         # sort dates in ascending order
         dates = sorted(dates, key=lambda x: datetime.datetime.strptime(x, '%d/%m/%Y %H:%M'))
 
+        last_meas = None
         ret = {}   
         value = None
         for date_index in range(len(dates)) :
@@ -410,6 +410,10 @@ class LastObservations():
                 # exit loop over measure dates
                 last_meas=dates[len(dates)-1-date_index] 
                 break
+        
+        if last_meas is None :
+            print("No pollution measure available") 
+            return {}
                 
         #Reject last observation if too old    
         if(datetime.datetime.now() - parse(last_meas, dayfirst=True)).total_seconds() > 60*60*3 :
