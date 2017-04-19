@@ -18,6 +18,7 @@ export VENT_1_URL_SUFFIX=""
 
 # Piou Piou stations for wind
 export VENT_1_PIOU_PIOU_URL_SUFFIX=""
+export VENT_2_PIOU_PIOU_URL_SUFFIX=""
 
 # influxdb Key for home data
 export INFLUX_DB_HOST_URL=""

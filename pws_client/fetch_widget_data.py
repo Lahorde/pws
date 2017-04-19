@@ -42,6 +42,7 @@ try:
     VENT_1_URL_SUFFIX = os.environ["VENT_1_URL_SUFFIX"]
     VENT_PIOU_PIOU_URL_PREFIX = os.environ["VENT_PIOU_PIOU_URL_PREFIX"]
     VENT_1_PIOU_PIOU_URL_SUFFIX = os.environ["VENT_1_PIOU_PIOU_URL_SUFFIX"]
+    VENT_2_PIOU_PIOU_URL_SUFFIX = os.environ["VENT_2_PIOU_PIOU_URL_SUFFIX"]
     #data influxdb
     INFLUX_DB_HOST_URL = os.environ["INFLUX_DB_HOST_URL"]
     INFLUX_DB_HOST_PORT = os.environ["INFLUX_DB_HOST_PORT"]
@@ -107,8 +108,9 @@ class LastObservations():
 
             parsed_json_forecast = self.getJSON('http://api.wunderground.com/api/' + API_KEY + '/forecast/conditions/lang:FR/q/France/' + pws_city + '.json')
             # WIND    
-            page_json_wind_1 = self.getJSON('http://api.wunderground.com/api/' + API_KEY + VENT_1_URL_SUFFIX)
-            page_json_wind_2 = self.getJSON(VENT_PIOU_PIOU_URL_PREFIX + VENT_1_PIOU_PIOU_URL_SUFFIX)
+            parsed_json_wind_1 = self.getJSON('http://api.wunderground.com/api/' + API_KEY + VENT_1_URL_SUFFIX)
+            parsed_json_wind_2 = self.getJSON(VENT_PIOU_PIOU_URL_PREFIX + VENT_1_PIOU_PIOU_URL_SUFFIX)
+            parsed_json_wind_3 = self.getJSON(VENT_PIOU_PIOU_URL_PREFIX + VENT_2_PIOU_PIOU_URL_SUFFIX)
 
             try:
                 # Je récupère les informations du jour stokées sur le tag "current_observation"
@@ -163,10 +165,18 @@ class LastObservations():
                 if parsed_json_wind_2 != None :
                     #piou piou
                   wind_2_last_obs = parsed_json_wind_2['data']['measurements']['date'] # l'heure dernière observation
-                  wind_2_last_obs = parse(wind_2_last_obs)
+                  wind_2_last_obs = parse(wind_2_last_obs).astimezone(tz.tzlocal())
                   wind_2_last_obs = wind_2_last_obs.strftime('%d/%m/%Y-%H:%M')
                   wind_kph_2 = parsed_json_wind_2['data']['measurements']['wind_speed_avg'] # la vitesse du vent
-                  wind_dir_2 = parsed_json_wind_2['data']['measurements']['wind_heading']# l'orientation du vent
+                  wind_dir_2 = LastObservations.deg_to_cardinals(parsed_json_wind_2['data']['measurements']['wind_heading'])# l'orientation du vent
+                  
+                if parsed_json_wind_3 != None :
+                    #piou piou
+                  wind_3_last_obs = parsed_json_wind_3['data']['measurements']['date'] # l'heure dernière observation
+                  wind_3_last_obs = parse(wind_3_last_obs).astimezone(tz.tzlocal())
+                  wind_3_last_obs = wind_3_last_obs.strftime('%d/%m/%Y-%H:%M')
+                  wind_kph_3 = parsed_json_wind_3['data']['measurements']['wind_speed_avg'] # la vitesse du vent
+                  wind_dir_3 = LastObservations.deg_to_cardinals(parsed_json_wind_3['data']['measurements']['wind_heading'])# l'orientation du vent
 
             except Exception as e:
                 print( "Impossible de parser les observations de pioupiou - {}".format(e), file=sys.stderr)
@@ -207,6 +217,9 @@ class LastObservations():
                 f.write("Vent_2_Derniere_observation = " + wind_2_last_obs + "\n")
                 f.write("Vent_2 = " + str(wind_kph_2) + " km/h\n")
                 f.write("Dir_vent_2 = " + str(wind_dir_2) + "\n")
+                f.write("Vent_3_Derniere_observation = " + wind_3_last_obs + "\n")
+                f.write("Vent_3 = " + str(wind_kph_3) + " km/h\n")
+                f.write("Dir_vent_3 = " + str(wind_dir_3) + "\n")
                 f.write("Pression = " + str(pressure_mb) + " mb\n")
                 f.write("Tend_pres = " + pressure_trend + "\n") 
                 f.write("Visibilite = " + str(visibility) + " km\n")
@@ -324,7 +337,6 @@ class LastObservations():
             utcDate = parse(list(val.get_points())[0]['time'])            
 
             #convert UTC date to local date 
-            from_zone = tz.tzutc()
             to_zone = tz.tzlocal()
             localDate = utcDate.astimezone(to_zone)
             return str(round(list(val.get_points())[0]['value'], 2)) + " " + localDate.strftime('%d/%m/%Y-%H:%M')
@@ -443,6 +455,11 @@ class LastObservations():
         else:
             icone = icon
         return icone
+    
+    @staticmethod
+    def deg_to_cardinals(deg):
+       cardinals = [ "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N" ]
+       return cardinals[round((deg*10)%3600 / 225)] 
 
 if __name__ == '__main__':
     print("starting wu_pws_polling script")

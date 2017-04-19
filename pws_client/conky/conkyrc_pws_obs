@@ -2,7 +2,6 @@
 --  Paramètres  --
 ------------------
 conky.config = {
-    background = true,
     use_xft = true,
     font = 'Source Sans Pro:size=9',
     uppercase = false,
@@ -22,7 +21,7 @@ conky.config = {
     draw_borders = false,
     draw_graph_borders = false,
     alignment = 'top_right',
-    default_color = '100c1c',
+    default_color = '000000',
     ---- max temp color ----
     color1 = '271620',
     ----in temp color ----
@@ -82,13 +81,14 @@ conky.text = [[
   #-------------------
     ${execp echo "\${image $PWS_CLIENT_PROJECT_PATH/icons/wind_4.png -p 180,162 -s 50x50}"}
 ${goto 240}${voffset -80}Chamrousse${goto 305}(${execp grep Vent_1_Derniere_observation /tmp/wu_polling.data | awk -F " " '{print substr($3,12,length($3)-1)}'})${goto 350}${font source sans pro :size=9:bold}${execp grep 'Dir_vent_1 ' /tmp/wu_polling.data | awk -F " " '{print $3 "  "}'}$alignr${execp grep 'Vent_1 ' /tmp/wu_polling.data | awk -F " " '{print $3 " " $4 " "}'}${font}
-    ${goto 240}Lans${goto 305}(${execp grep Vent_2_Derniere_observation /tmp/wu_polling.data | awk -F " " '{print substr($3,12,length($3)-1)}'})${goto 350}${font source sans pro :size=9:bold}${execp grep 'Dir_vent_2 ' /tmp/wu_polling.data | awk -F " " '{print $3 "  "}'}$alignr${execp grep 'Vent_2 ' /tmp/wu_polling.data | awk -F " " '{print $3 " " $4 " "}'}${font}
+    ${goto 240}Aix Les Bains${goto 305}(${execp grep Vent_2_Derniere_observation /tmp/wu_polling.data | awk -F " " '{print substr($3,12,length($3)-1)}'})${goto 350}${font source sans pro :size=9:bold}${execp grep 'Dir_vent_2 ' /tmp/wu_polling.data | awk -F " " '{print $3 "  "}'}$alignr${execp grep 'Vent_2 ' /tmp/wu_polling.data | awk -F " " '{print $3 " " $4 " "}'}${font}
+    ${goto 240}Monteynard${goto 305}(${execp grep Vent_3_Derniere_observation /tmp/wu_polling.data | awk -F " " '{print substr($3,12,length($3)-1)}'})${goto 350}${font source sans pro :size=9:bold}${execp grep 'Dir_vent_3 ' /tmp/wu_polling.data | awk -F " " '{print $3 "  "}'}$alignr${execp grep 'Vent_3 ' /tmp/wu_polling.data | awk -F " " '{print $3 " " $4 " "}'}${font}
   #------------------
   #-- AIR quality ---
   #------------------
-  ${voffset 30}${goto 30}${color #393835}${hr 1}
+  ${voffset 14}${goto 30}${color #393835}${hr 1}
   ${execp echo "\${image $PWS_CLIENT_PROJECT_PATH/icons/air_quality2.png -p 40,242 -s 50x50}"}
-  ${voffset -15}${color}${font source sans pro :size=9:bold}${goto 130}Pollution à ${execp grep Poll_station /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'} à  ${execp grep Poll_timestamp /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${alignr}AQI ${font source sans pro :size=10:bold}${execp grep 'AQI ' /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${color}${execp $PWS_CLIENT_PROJECT_PATH/conky/scripts/get_aqi_color.sh 393 240 23}${font}
+  ${voffset -15}${color}${font source sans pro :size=9:bold}${goto 130}Pollution à ${execp grep Poll_station /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'} à  ${execp grep Poll_timestamp /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${alignr}AQI ${font source sans pro :size=10:bold}${execp grep 'AQI ' /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${color}${execp $PWS_CLIENT_PROJECT_PATH/conky/scripts/get_aqi_color.sh 389 239 26}${font}
   ${goto 135}NO2${goto 180}NO${goto 210}Ozone${goto 260}PM10${goto 310}PM2.5
   ${font source sans pro :size=9:bold}${goto 135}${execp grep Dioxyde_azote /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${goto 180}${execp grep Monoxyde_azote /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${goto 210}${execp grep Ozone /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${goto 260}${execp grep PM10 /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${goto 310}${execp grep PM2_5 /tmp/wu_polling.data | awk -F " " '{$1=$2=""; print $0}'}${font}
   #--------------------
