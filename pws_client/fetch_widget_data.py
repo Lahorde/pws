@@ -23,12 +23,10 @@ import datetime
 import dateutil.parser
 import sys, traceback
 import time
-import daemon
 import lockfile.pidlockfile 
 from dateutil.parser import parse
 from dateutil import tz
 from datetime import timezone
-import logging
 from influxdb import client as influxdb
 
 NA_FIELD = "--"
@@ -70,7 +68,7 @@ except KeyError as e:
 
 class LastObservations(): 
     def __init__(self):
-        self.db = influxdb.InfluxDBClient(INFLUX_DB_HOST_URL, INFLUX_DB_HOST_PORT, INFLUX_DB_USER, INFLUX_DB_PASS)
+        self.db = influxdb.InfluxDBClient(INFLUX_DB_HOST_URL, INFLUX_DB_HOST_PORT, INFLUX_DB_USER, INFLUX_DB_PASS, timeout=1)
 
     def getJSON(self, url):
         try:
@@ -84,7 +82,7 @@ class LastObservations():
             print( "Unable to get parsed json data from {} - {}".format( url, e), file=sys.stderr)
             sys.exit(2)
 
-    def run(self):
+    def fetch_data(self):
         print("starting wu_pws_polling loop")
 
         while True: # C'est le début de ma boucle pour démoniser mon programme
@@ -465,6 +463,4 @@ if __name__ == '__main__':
     print("starting wu_pws_polling script")
 
     lastObs = LastObservations()
-    pidfile = lockfile.pidlockfile.PIDLockFile("/tmp/pws.pid")
-    with daemon.DaemonContext(stdout=sys.stdout, stderr=sys.stderr, pidfile=pidfile):
-        lastObs.run()
+    lastObs.fetch_data()

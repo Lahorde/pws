@@ -21,27 +21,12 @@ function startPollingScript {
     
     if [ $? -eq 0 ]
     then
-        poll_script_pid=$(pgrep -f "$script_launch_cmd" )
-        logFn "wu polling script started - pid = $poll_script_pid"
+        logFn "wu polling script started - pid"
     else
-        logFn "Error $? when launching python2 $PWS_CLIENT_PROJECT_PATH/wu_pws_polling.py start - exiting"
+        logFn "Error $? when launching polling script - exiting"
         exit 1
     fi
 }
 
-logFn "start pws display"
-
+logFn "start pws data fetch"
 startPollingScript
-
-while true ; do
-    if kill -0 $poll_script_pid ; then
-        sleep 5
-    else
-        logFn "polling script exited - try to restart it"
-        startPollingScript
-    fi
-done
-    
-    
-
-exit 0
