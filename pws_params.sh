@@ -34,10 +34,11 @@ export INFLUXDB_HOME_HUMIDITY_FIELD=""
 # Rhone Alpes station id: http://www.air-rhonealpes.fr/donnees/acces-par-station
 export POLLUTION_STATION_ID=""
 
-# Air Visual API
-export AIR_VISUAL_KEY=""
-export AIR_VISUAL_STATION_LAT=""
-export AIR_VISUAL_STATION_LONG=""
+# ATMO provides an API to get open data about air quality
+# we will use it to get current ATMO level https://fr.wikipedia.org/wiki/Indice_de_qualit%C3%A9_de_l%27air#Indice_Atmo
+# in given location
+export ATMO_API_TOKEN=""
+export ATMO_POLLUTION_LEVEL_LOCATION=""
 
 # where are polling data
 export PWS_POLLING_DATA_PATH=""

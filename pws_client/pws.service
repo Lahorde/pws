@@ -1,7 +1,8 @@
 [Unit]
 Description=PWS polling
-Wants=graphical.target
-After=graphical.target
+Requires=graphical.target network-online.target
+After=graphical.target network-online.target
+
 
 [Service]
 # Note: setting PYTHONUNBUFFERED is necessary to see the output of this service in the journal
@@ -9,7 +10,7 @@ After=graphical.target
 Environment=PYTHONUNBUFFERED=true
 Type=simple
 RemainAfterExit=no
-ExecStart=/usr/bin/sh -c "PWS_PROJECT_DIR/pws_client/start_pws_polling.sh > /tmp/pws.log"
+ExecStart=/usr/bin/sh -c "PWS_PROJECT_DIR/pws_client/start_pws_polling.sh"
 
 [Install]
 WantedBy=graphical.target
